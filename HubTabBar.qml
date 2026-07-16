@@ -44,7 +44,10 @@ Item {
 
         background: Rectangle {
             Rectangle {
-                anchors.fill: parent
+                anchors {
+                    fill: parent
+                    bottomMargin: -3
+                }
                 color: tabButton.isActive ? root.activeColor : root.barColor
                 border {
                     width: tabButton.isActive ? 2 : 1
