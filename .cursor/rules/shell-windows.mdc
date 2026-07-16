@@ -1,0 +1,18 @@
+---
+description: Windows PowerShell — chain commands with semicolons, not &&
+alwaysApply: true
+---
+
+# Shell (Windows)
+
+Development runs on Windows (PowerShell). Chain commands with `;`, not `&&`:
+
+```
+cd "path"; git diff file.cpp
+```
+
+Do not use bash-style `&&`:
+
+```
+cd "path" && git diff file.cpp
+```

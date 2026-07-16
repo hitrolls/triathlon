@@ -1,0 +1,37 @@
+---
+description: Qt Linguist (.ts) — format and translation fill order; no lupdate/lrelease
+globs:
+  - "translations/**/*.ts"
+alwaysApply: false
+---
+
+# Qt Linguist translation files (`.ts`)
+
+Format is described in [Qt documentation: TS file format](https://doc.qt.io/qt-6/linguist-ts-file-format.html). The file is XML with root `<TS>`, `<context>` blocks, and `<message>` entries; each message has a source string `<source>` and target text in `<translation>` (plus `<numerusform>` plural forms and length variants when needed).
+
+## When to apply this rule
+
+When editing or completing **only** files matching the glob above (Qt `.ts`), not TypeScript.
+
+## How to fill translations (no scripts)
+
+1. **Target language** comes from the file header: the `language` attribute on `<TS>`, e.g. `<TS version="2.1" language="de_DE">` means translate into **German (Germany)**. For `ru_RU`, `ja_JP`, etc., use that locale. Also respect `sourcelanguage` when set (language of strings in `<source>`).
+
+2. **Find untranslated messages in file order** top to bottom. In Qt Linguist, an incomplete translation has `type="unfinished"` on the translation element (often empty, sometimes draft text):
+   - `<translation type="unfinished"></translation>`
+   - or `<translation type="unfinished">…</translation>`
+
+3. **For each such message**, in the same `<message>` block read `<source>` (and if needed context `<name>`, `<extracomment>` / `<translatorcomment>`) and **replace** `<translation>` content with a correct translation for the `language` locale, marking it complete: remove `type="unfinished"` or match how finished entries look elsewhere in that file (finished translations usually have no `type="unfinished"`).
+
+4. **Do not create or run** external scripts (Python, shell, standalone tools) for bulk `.ts` updates unless the user asks. Work by direct XML editing in the editor / via the assistant.
+
+5. **Do not run `lupdate` or `lrelease`** (or CMake/qmake calls that only update/compile translation catalogs). The user runs those when needed.
+
+6. **Many untranslated strings:** process **in chunks** (e.g. one `<context>` or a fixed number of messages per pass), each time re-scanning for remaining `<translation type="unfinished">` until none remain.
+
+## Technical constraints
+
+- Keep valid XML: escape `&`, `<`, `>` in text; do not break tag nesting.
+- Do not remove structural elements (`<location>`, `<numerusform>`, `numerus="yes"`, etc.) when present — change translation content first.
+- For plural strings, translate **every** `<numerusform>` per target-language rules.
+- Preserve placeholders and formatting from `<source>` (e.g. `%1`, `\n`, HTML/Markdown when present) in the translation where Qt requires it.

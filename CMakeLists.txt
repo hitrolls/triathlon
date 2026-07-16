@@ -4,7 +4,7 @@ project(Triathlon VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -16,6 +16,12 @@ qt_add_qml_module(appTriathlon
     URI Triathlon
     QML_FILES
         Main.qml
+        LoadingScreen.qml
+        Game.qml
+        RaceScreen.qml
+        HubScreen.qml
+        HubTabBar.qml
+        RaceTabBar.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -30,7 +36,7 @@ set_target_properties(appTriathlon PROPERTIES
 )
 
 target_link_libraries(appTriathlon
-    PRIVATE Qt6::Quick
+    PRIVATE Qt6::Quick Qt6::QuickControls2
 )
 
 install(TARGETS appTriathlon
