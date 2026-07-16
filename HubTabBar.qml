@@ -6,6 +6,7 @@ Item {
 
     property int currentIndex: 0
 
+    readonly property int safeBottom: window.safeBottom
     readonly property int barHeight: 96
     readonly property int raisedExtra: 36
     readonly property color barColor: "#4a5560"
@@ -19,7 +20,7 @@ Item {
         { text: qsTr("Bank"), emoji: "💰", locked: false, badge: false }
     ]
 
-    implicitHeight: barHeight + raisedExtra
+    implicitHeight: barHeight + raisedExtra + safeBottom
     implicitWidth: 200
 
     Row {
@@ -40,7 +41,8 @@ Item {
                 readonly property bool isLocked: modelData.locked
 
                 width: root.width / root.tabs.length
-                height: isActive ? barHeight + raisedExtra : barHeight
+                height: isActive ? root.barHeight + root.raisedExtra + root.safeBottom
+                                 : root.barHeight + root.safeBottom
                 enabled: !isLocked
 
                 checkable: true
@@ -58,10 +60,10 @@ Item {
                         anchors {
                             fill: parent
                         }
-                        color: tabButton.isActive ? activeColor : barColor
+                        color: tabButton.isActive ? root.activeColor : root.barColor
                         border.width: isActive ? 2 : 1
-                        border.color: strokeColor
-                    }                
+                        border.color: root.strokeColor
+                    }
                 }
 
                 contentItem: Item {
@@ -69,7 +71,7 @@ Item {
                         anchors {
                             horizontalCenter: parent.horizontalCenter
                             bottom: parent.bottom
-                            bottomMargin: tabButton.isActive ? 20 + raisedExtra : 20
+                            bottomMargin: (tabButton.isActive ? 20 + root.raisedExtra : 20) + root.safeBottom
                         }
                         text: tabButton.isLocked ? "🔒" : tabButton.modelData.emoji
                         font.pixelSize: 44

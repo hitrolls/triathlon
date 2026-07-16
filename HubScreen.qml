@@ -27,7 +27,7 @@ Item {
             right: parent.right
             top: parent.top
             bottom: parent.bottom
-            bottomMargin: hubTabBar.barHeight
+            bottomMargin: hubTabBar.barHeight + hubTabBar.safeBottom
         }
         currentIndex: Math.max(0, root.currentTab - 1)
 

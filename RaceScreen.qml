@@ -18,7 +18,8 @@ Item {
             right: parent.right
             top: parent.top
             bottom: parent.bottom
-            bottomMargin: root.racing ? raceTabBar.implicitHeight : hubTabBar.barHeight
+            bottomMargin: root.racing ? raceTabBar.implicitHeight
+                                       : hubTabBar.barHeight + hubTabBar.safeBottom
         }
         color: "#e8e2d4"
 
