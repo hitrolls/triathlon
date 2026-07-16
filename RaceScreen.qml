@@ -5,12 +5,8 @@ Item {
     id: root
 
     property bool racing: false
-    property int athletes: 12
-    property int athleteCap: 20
-    property real athleteRegen: 0.35
 
     signal requestHub(int tab)
-    signal spawnRequested(int typeIndex)
 
     Rectangle {
         anchors {
@@ -19,7 +15,7 @@ Item {
             top: parent.top
             bottom: parent.bottom
             bottomMargin: root.racing ? raceTabBar.implicitHeight
-                                       : hubTabBar.barHeight + hubTabBar.safeBottom
+                                       : hubTabBar.barHeight + safeBottom
         }
         color: "#e8e2d4"
 
@@ -71,6 +67,7 @@ Item {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
+            margins: -3
         }
         visible: !root.racing
         currentIndex: 0
@@ -92,12 +89,9 @@ Item {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
+            margins: -3
         }
-        visible: root.racing
-        athletes: root.athletes
-        athleteCap: root.athleteCap
-        athleteRegen: root.athleteRegen
 
-        onSpawnRequested: typeIndex => root.spawnRequested(typeIndex)
+        visible: root.racing
     }
 }

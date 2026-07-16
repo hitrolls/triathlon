@@ -6,7 +6,6 @@ Item {
 
     property int currentIndex: 0
 
-    readonly property int safeBottom: window.safeBottom
     readonly property int barHeight: 96
     readonly property int raisedExtra: 36
     readonly property int tabCount: tabRow.children.length
@@ -28,8 +27,8 @@ Item {
         readonly property bool isActive: root.currentIndex === index
 
         width: root.width / root.tabCount
-        height: isActive ? root.barHeight + root.raisedExtra + root.safeBottom
-                         : root.barHeight + root.safeBottom
+        height: isActive ? root.barHeight + root.raisedExtra + safeBottom
+                         : root.barHeight + safeBottom
         enabled: !locked
 
         checkable: true
@@ -43,16 +42,11 @@ Item {
         }
 
         background: Rectangle {
-            Rectangle {
-                anchors {
-                    fill: parent
-                    bottomMargin: -3
-                }
-                color: tabButton.isActive ? root.activeColor : root.barColor
-                border {
-                    width: tabButton.isActive ? 2 : 1
-                    color: root.strokeColor
-                }
+            anchors.fill: parent
+            color: tabButton.isActive ? root.activeColor : root.barColor
+            border {
+                width: tabButton.isActive ? 2 : 1
+                color: root.strokeColor
             }
         }
 
@@ -61,7 +55,7 @@ Item {
                 anchors {
                     horizontalCenter: parent.horizontalCenter
                     bottom: parent.bottom
-                    bottomMargin: (tabButton.isActive ? 20 + root.raisedExtra : 20) + root.safeBottom
+                    bottomMargin: (tabButton.isActive ? 20 + root.raisedExtra : 20) + safeBottom
                 }
                 text: tabButton.locked ? "🔒" : tabButton.emoji
                 font.pixelSize: 44

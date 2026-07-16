@@ -27,7 +27,7 @@ Item {
             right: parent.right
             top: parent.top
             bottom: parent.bottom
-            bottomMargin: hubTabBar.barHeight + hubTabBar.safeBottom
+            bottomMargin: hubTabBar.barHeight + safeBottom
         }
         currentIndex: Math.max(0, root.currentTab - 1)
 
@@ -46,6 +46,7 @@ Item {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
+            margins: -3
         }
 
         Component.onCompleted: {
