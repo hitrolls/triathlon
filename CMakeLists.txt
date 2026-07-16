@@ -20,6 +20,10 @@ qt_add_qml_module(appTriathlon
         Game.qml
         RaceScreen.qml
         HubScreen.qml
+        HubPage.qml
+        AthletesScreen.qml
+        TrackScreen.qml
+        BankScreen.qml
         HubTabBar.qml
         RaceTabBar.qml
 )

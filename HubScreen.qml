@@ -31,47 +31,11 @@ Item {
         }
         currentIndex: Math.max(0, root.currentTab - 1)
 
-        Rectangle {
-            color: "#e8e2d4"
+        AthletesScreen { }
 
-            Text {
-                anchors.centerIn: parent
-                text: qsTr("Athletes")
-                color: "#1e1c1a"
-                font {
-                    pixelSize: 22
-                    bold: true
-                }
-            }
-        }
+        TrackScreen { }
 
-        Rectangle {
-            color: "#e8e2d4"
-
-            Text {
-                anchors.centerIn: parent
-                text: qsTr("Track")
-                color: "#1e1c1a"
-                font {
-                    pixelSize: 22
-                    bold: true
-                }
-            }
-        }
-
-        Rectangle {
-            color: "#e8e2d4"
-
-            Text {
-                anchors.centerIn: parent
-                text: qsTr("Bank")
-                color: "#1e1c1a"
-                font {
-                    pixelSize: 22
-                    bold: true
-                }
-            }
-        }
+        BankScreen { }
     }
 
     HubTabBar {

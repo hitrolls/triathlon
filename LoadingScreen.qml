@@ -7,7 +7,7 @@ Item {
 
     readonly property bool ready: gameLoader.status === Loader.Ready && root.minimumDelayElapsed
     readonly property Timer minimumDelay: Timer {
-        interval: 1000
+        interval: 100
         onTriggered: root.minimumDelayElapsed = true
     }
 
