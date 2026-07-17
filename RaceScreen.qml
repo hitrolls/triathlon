@@ -196,7 +196,8 @@ Item {
                     height: athlete.height
                     x: (lane.width - width) / 2 + laneOffset
                     y: lane.yAtProgress(progress) - height
-                    z: Math.round((1 - progress) * 100) + 1
+                    // Depth from on-screen Y; include fall slide so corpses don't float over runners ahead
+                    z: Math.max(1, Math.round(y + height + athlete.depthBias))
 
                     Athlete {
                         id: athlete

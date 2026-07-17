@@ -21,6 +21,8 @@ Item {
     readonly property bool fallen: pose === "injured" || pose === "dead"
     readonly property bool celebrating: pose === "finish"
     readonly property bool running: pose === "run"
+    // Fall slide moves the body in local space; RaceScreen uses this for z-order
+    readonly property real depthBias: root.fallen ? fallSlide.y : 0
 
     // Per-athlete timing so pose loops are not synchronized
     readonly property real warmupPhase: Math.random() * 700
@@ -291,7 +293,7 @@ Item {
             rotation: root.celebrating ? finishHand.angle
                         : root.running ? root.armRunAngle
                         : root.armRestAngle
-            z: root.celebrating ? 4 : 0
+            z: 4
 
             Rectangle {
                 x: (root.running ? root.armRunReach : root.armLength) - width * 0.5
@@ -316,7 +318,7 @@ Item {
             width: 0
             height: 0
             rotation: -root.armRunAngle
-            z: 0
+            z: 4
 
             Rectangle {
                 x: -(root.armRunReach + width * 0.5)
