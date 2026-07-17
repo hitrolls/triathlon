@@ -8,10 +8,35 @@ Item {
 
     signal requestHub(int tab)
 
+    function isRacingPose(pose) {
+        return pose === "swim" || pose === "bike" || pose === "run"
+    }
+
+    function poseForProgress(p) {
+        const d = course.disciplineAt(p)
+        if (d === "transition")
+            return "run"
+
+        const local = course.segmentLocal(p)
+        if (d === "swim") {
+            // Land below water → swim → climb out above water
+            if (local < 0.1 || local > 0.9)
+                return "run"
+            return "swim"
+        }
+        if (d === "bike") {
+            // Mount above → ride → dismount below
+            if (local < 0.08 || local > 0.92)
+                return "run"
+            return "bike"
+        }
+        return "run"
+    }
+
     function startRace() {
         for (let i = 0; i < athletesModel.count; ++i) {
             athletesModel.setProperty(i, "progress", 0)
-            athletesModel.setProperty(i, "pose", "run")
+            athletesModel.setProperty(i, "pose", root.poseForProgress(0))
             athletesModel.setProperty(i, "headDetached", false)
         }
         root.racing = true
@@ -21,14 +46,25 @@ Item {
         root.racing = false
     }
 
+    function speedScaleAt(p) {
+        const d = course.disciplineAt(p)
+        if (d === "transition")
+            return 3
+        if (d === "swim" && root.poseForProgress(p) === "swim")
+            return 0.42
+        return 1
+    }
+
     function tickRace(dt) {
         let active = 0
         for (let i = 0; i < athletesModel.count; ++i) {
-            if (athletesModel.get(i).pose !== "run")
+            const pose = athletesModel.get(i).pose
+            if (!root.isRacingPose(pose))
                 continue
 
             ++active
-            let progress = athletesModel.get(i).progress + athletesModel.get(i).speed * dt
+            const prev = athletesModel.get(i).progress
+            let progress = prev + athletesModel.get(i).speed * root.speedScaleAt(prev) * dt
 
             if (progress >= 1) {
                 athletesModel.setProperty(i, "progress", 1)
@@ -37,7 +73,9 @@ Item {
                 continue
             }
 
-            if (progress > 0.08 && progress < 0.92 && Math.random() < 0.35 * dt) {
+            // Casualties only on the run segment for now (swim/bike/transitions later)
+            const discipline = course.disciplineAt(progress)
+            if (discipline === "run" && progress < 0.98 && Math.random() < 0.35 * dt) {
                 const dead = Math.random() < 0.45
                 athletesModel.setProperty(i, "progress", progress)
                 athletesModel.setProperty(i, "headDetached", dead && Math.random() < 0.45)
@@ -47,6 +85,7 @@ Item {
             }
 
             athletesModel.setProperty(i, "progress", progress)
+            athletesModel.setProperty(i, "pose", root.poseForProgress(progress))
         }
 
         if (active === 0)
@@ -59,33 +98,33 @@ Item {
             jerseyColor: "#e85d4c"
             accentColor: "#f2efe8"
             scaleFactor: 1.15
-            laneOffset: -56
+            laneOffset: -14
             progress: 0
             pose: "warmup"
             headDetached: false
-            speed: 0.14
+            speed: 0.04
         }
         ListElement {
             number: 12
             jerseyColor: "#3d7ea6"
             accentColor: "#ffe08a"
             scaleFactor: 1.05
-            laneOffset: 8
+            laneOffset: 2
             progress: 0
             pose: "warmup"
             headDetached: false
-            speed: 0.11
+            speed: 0.03
         }
         ListElement {
             number: 3
             jerseyColor: "#5b8c5a"
             accentColor: "#f2efe8"
             scaleFactor: 0.95
-            laneOffset: 64
+            laneOffset: 16
             progress: 0
             pose: "warmup"
             headDetached: false
-            speed: 0.17
+            speed: 0.05
         }
     }
 
@@ -109,79 +148,270 @@ Item {
         }
         color: "#e8e2d4"
 
-        Rectangle {
-            id: lane
+        Item {
+            id: course
 
             anchors {
-                horizontalCenter: parent.horizontalCenter
+                left: parent.left
+                right: parent.right
                 top: parent.top
-                topMargin: 80
                 bottom: parent.bottom
+                leftMargin: 16
+                rightMargin: 16
+                topMargin: 72
                 bottomMargin: 120
             }
-            width: Math.min(parent.width * 0.42, 220)
-            color: "#d9d0bc"
-            border {
-                width: 2
-                color: "#1a1a1a"
+
+            readonly property real gap: 10
+            readonly property real colW: (width - gap * 2) / 3
+            readonly property real pathTop: 36
+            readonly property real pathBottom: height - 36
+            // Path Y is the shadow/stance point. Banks sit just outside lane edges.
+            readonly property real shoreBelow: pathTop + 40
+            readonly property real shoreAbove: pathTop + 8
+            readonly property real swimX: colW * 0.5
+            readonly property real bikeX: colW + gap + colW * 0.5
+            readonly property real runX: colW * 2 + gap * 2 + colW * 0.5
+            readonly property real segmentLen: 0.2
+
+            function disciplineAt(p) {
+                const t = Math.max(0, Math.min(1, p))
+                if (t < segmentLen)
+                    return "swim"
+                if (t < segmentLen * 2)
+                    return "transition"
+                if (t < segmentLen * 3)
+                    return "bike"
+                if (t < segmentLen * 4)
+                    return "transition"
+                return "run"
             }
 
-            readonly property real pathStart: height - 28
-            readonly property real pathEnd: 28
-
-            function yAtProgress(p) {
-                return pathEnd + (1 - p) * (pathStart - pathEnd)
+            function segmentLocal(p) {
+                const t = Math.max(0, Math.min(1, p))
+                const seg = Math.min(4, Math.floor(t / segmentLen))
+                return (t - seg * segmentLen) / segmentLen
             }
 
-            Rectangle {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                    topMargin: 18
+            function pointAtProgress(p) {
+                const t = Math.max(0, Math.min(1, p))
+                const seg = Math.min(4, Math.floor(t / segmentLen))
+                const local = (t - seg * segmentLen) / segmentLen
+                let x = swimX
+                let y = pathBottom
+                let nx = 1
+                let ny = 0
+
+                if (seg === 0) {
+                    // Swim up: land below → water → climb out above
+                    x = swimX
+                    y = pathBottom + (pathTop - pathBottom) * local
+                        + shoreBelow * (1 - local) - shoreAbove * local
+                    nx = 1
+                    ny = 0
+                } else if (seg === 1) {
+                    // Top transition above the tracks
+                    x = swimX + (bikeX - swimX) * local
+                    y = pathTop - shoreAbove
+                    nx = 0
+                    ny = 1
+                } else if (seg === 2) {
+                    // Bike down: mount above → dismount below
+                    x = bikeX
+                    y = pathTop + (pathBottom - pathTop) * local
+                        - shoreAbove * (1 - local) + shoreBelow * local
+                    nx = 1
+                    ny = 0
+                } else if (seg === 3) {
+                    // Bottom transition below the tracks
+                    x = bikeX + (runX - bikeX) * local
+                    y = pathBottom + shoreBelow
+                    nx = 0
+                    ny = 1
+                } else {
+                    // Run up: below → above
+                    x = runX
+                    y = pathBottom + (pathTop - pathBottom) * local
+                        + shoreBelow * (1 - local) - shoreAbove * local
+                    nx = 1
+                    ny = 0
                 }
-                height: 10
-                color: "#1a1a1a"
 
-                Row {
-                    anchors.fill: parent
-                    Repeater {
-                        model: 8
+                return {
+                    x: x,
+                    y: y,
+                    nx: nx,
+                    ny: ny,
+                    discipline: disciplineAt(t)
+                }
+            }
 
-                        Rectangle {
-                            required property int index
+            // Swim column
+            Rectangle {
+                id: swimLane
 
-                            width: parent.width / 8
-                            height: parent.height
-                            color: index % 2 === 0 ? "#f2efe8" : "#1a1a1a"
+                x: 0
+                width: course.colW
+                anchors {
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+                color: "#6ba3c9"
+                border {
+                    width: 2
+                    color: "#1a1a1a"
+                }
+
+                Rectangle {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        topMargin: 10
+                    }
+                    height: 8
+                    color: "#8ec4e0"
+                    opacity: 0.85
+                }
+
+                Rectangle {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                        bottomMargin: 28
+                    }
+                    height: 4
+                    color: "#1a1a1a"
+                }
+            }
+
+            // Bike column
+            Rectangle {
+                id: bikeLane
+
+                x: course.colW + course.gap
+                width: course.colW
+                anchors {
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+                color: "#9a958a"
+                border {
+                    width: 2
+                    color: "#1a1a1a"
+                }
+
+                Rectangle {
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                        top: parent.top
+                        bottom: parent.bottom
+                        topMargin: 20
+                        bottomMargin: 20
+                    }
+                    width: 3
+                    color: "#f2efe8"
+                    opacity: 0.55
+                }
+            }
+
+            // Run column
+            Rectangle {
+                id: runLane
+
+                x: course.colW * 2 + course.gap * 2
+                width: course.colW
+                anchors {
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+                color: "#d9d0bc"
+                border {
+                    width: 2
+                    color: "#1a1a1a"
+                }
+
+                Rectangle {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        topMargin: 18
+                    }
+                    height: 10
+                    color: "#1a1a1a"
+
+                    Row {
+                        anchors.fill: parent
+                        Repeater {
+                            model: 6
+
+                            Rectangle {
+                                required property int index
+
+                                width: parent.width / 6
+                                height: parent.height
+                                color: index % 2 === 0 ? "#f2efe8" : "#1a1a1a"
+                            }
                         }
                     }
                 }
+
+                Rectangle {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                        bottomMargin: 28
+                    }
+                    height: 4
+                    color: "#1a1a1a"
+                }
             }
 
+            // Top connector swim → bike (above tracks)
             Rectangle {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    bottom: parent.bottom
-                    bottomMargin: 28
+                x: course.colW - 2
+                y: course.pathTop - course.shoreAbove - 14
+                width: course.gap + 4
+                height: 28
+                color: "#9a958a"
+                border {
+                    width: 2
+                    color: "#1a1a1a"
                 }
-                height: 4
-                color: "#1a1a1a"
+                z: 1
+                visible: false
+            }
+
+            // Bottom connector bike → run (below tracks)
+            Rectangle {
+                x: course.colW + course.gap + course.colW - 2
+                y: course.pathBottom + course.shoreBelow - 14
+                width: course.gap + 4
+                height: 28
+                color: "#d9d0bc"
+                border {
+                    width: 2
+                    color: "#1a1a1a"
+                }
+                z: 1
+                visible: false
             }
 
             Item {
                 id: athleteShadows
 
                 anchors.fill: parent
-                z: 0
+                z: 2
             }
 
             Item {
                 id: athleteBlood
 
                 anchors.fill: parent
-                z: 0
+                z: 2
             }
 
             Repeater {
@@ -203,12 +433,14 @@ Item {
                     property real lastTrackY: -1
                     readonly property real facing: (pose === "warmup" || pose === "finish")
                                                    ? 1 : moveFacing
+                    readonly property var trackPoint: course.pointAtProgress(progress)
 
                     width: athlete.width
                     height: athlete.height
-                    x: (lane.width - width) / 2 + laneOffset
-                    y: lane.yAtProgress(progress) - height
-                    // Depth from on-screen Y; include fall slide so corpses don't float over runners ahead
+                    x: trackPoint.x + trackPoint.nx * laneOffset - width * 0.5
+                    // trackPoint.y is the shadow/stance point (not item bottom)
+                    y: trackPoint.y + trackPoint.ny * laneOffset - height
+                       + ((pose === "swim" && !athlete.fallen) ? 0 : athlete.stanceLift)
                     z: Math.max(1, Math.round(y + height + athlete.depthBias))
 
                     onYChanged: {
@@ -223,8 +455,10 @@ Item {
                     }
 
                     onPoseChanged: {
-                        if (pose === "run")
+                        if (pose === "swim" || pose === "run")
                             moveFacing = -1
+                        else if (pose === "bike")
+                            moveFacing = 1
                         else if (pose === "dead")
                             moveFacing = Math.random() < 0.5 ? 1 : -1
                     }

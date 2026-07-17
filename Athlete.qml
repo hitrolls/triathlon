@@ -31,6 +31,8 @@ Item {
     readonly property bool fallen: pose === "injured" || pose === "dead"
     readonly property bool celebrating: pose === "finish"
     readonly property bool running: pose === "run"
+    readonly property bool swimming: pose === "swim"
+    readonly property bool biking: pose === "bike"
     readonly property real faceAmount: Math.max(0, root.facing)
     // Fall slide moves the body in local space; RaceScreen uses this for z-order
     readonly property real depthBias: root.fallen ? fallSlide.y : 0
@@ -40,6 +42,10 @@ Item {
     readonly property real warmupBeat: 170 + Math.random() * 110
     readonly property real runPhase: Math.random() * 500
     readonly property real runBeat: 105 + Math.random() * 75
+    readonly property real swimPhase: Math.random() * 500
+    readonly property real swimBeat: 240 + Math.random() * 120
+    readonly property real bikePhase: Math.random() * 400
+    readonly property real bikeBeat: 90 + Math.random() * 50
     readonly property real finishPhase: Math.random() * 600
     readonly property real finishBeat: 200 + Math.random() * 140
     readonly property real armLength: root.u * 3.5
@@ -49,9 +55,17 @@ Item {
     readonly property real armRunReach: root.u * 2.1
     readonly property real armRunLiftHigh: -root.u * 2.6
     readonly property real armRunLiftLow: root.u * 2.0
+    readonly property real armSwimReach: root.u * 3.2
+    readonly property real armBikeAngle: -28
+    readonly property real armBikeReach: root.u * 2.8
+    readonly property real bikeLeanAngle: 14
+    // Standing: body bottom (shadow) sits this far above item bottom
+    readonly property real stanceLift: root.u * 2.2
     readonly property real figureOriginX: figure.width * (root.fallen ? 0.5 : 0.42)
     readonly property real figureOriginY: figure.height * (root.fallen ? 0.5 : 0.75)
-    readonly property real figureAngle: root.fallen ? fallTilt.angle : lean.angle
+    readonly property real figureAngle: root.fallen ? fallTilt.angle
+                                     : root.biking ? root.bikeLeanAngle * (root.facing >= 0 ? 1 : -1) + lean.angle
+                                     : lean.angle
     readonly property real figureShiftX: (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
     readonly property real figureShiftY: -bob.offset + (root.fallen ? fallSlide.y : 0)
 
@@ -69,6 +83,7 @@ Item {
         stride.offset = 0
         finishHand.angle = root.armRestAngle
         runHand.lift = 0
+        swimHand.angle = 0
     }
 
     function resetFallState() {
@@ -268,9 +283,11 @@ Item {
                 const bodyPt = root.lowestInLayer(body, shadows, true)
                 bodyShadow.x = bodyPt.x - bodyShadow.width * 0.5
                 bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5
-                bodyShadow.visible = true
+                bodyShadow.visible = !root.swimming && !root.fallen
 
-                const showHeadShadow = root.headDetached && head.visible
+                const showHeadShadow = head.visible
+                                       && ((root.headDetached && root.fallen)
+                                           || (root.swimming && !root.fallen))
                 if (showHeadShadow) {
                     const headPt = root.lowestInLayer(head, shadows, true)
                     headShadow.x = headPt.x - headShadow.width * 0.5
@@ -313,7 +330,8 @@ Item {
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            bottomMargin: root.u * 2.2
+            // Swim: drop figure so head sits near path (waterline); body hangs below / hidden
+            bottomMargin: (root.swimming && !root.fallen) ? -(root.u * 7.5) : root.u * 2.2
         }
         width: root.u * 12
         height: root.u * 16
@@ -330,22 +348,100 @@ Item {
             }
         ]
 
-        // Hands — finish raises the right arm; run pumps both beside the torso (rear view)
+        // Bike silhouette under the rider
+        Item {
+            id: bike
+
+            visible: root.biking && !root.fallen
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: parent.bottom
+                bottomMargin: -root.u * 0.4
+            }
+            width: root.u * 11
+            height: root.u * 6
+            z: 0
+
+            Rectangle {
+                id: rearWheel
+
+                anchors {
+                    left: parent.left
+                    bottom: parent.bottom
+                }
+                width: root.u * 3.6
+                height: root.u * 3.6
+                radius: width / 2
+                color: "transparent"
+                border {
+                    width: Math.max(2, root.u * 0.55)
+                    color: root.outline
+                }
+            }
+
+            Rectangle {
+                id: frontWheel
+
+                anchors {
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                width: root.u * 3.6
+                height: root.u * 3.6
+                radius: width / 2
+                color: "transparent"
+                border {
+                    width: Math.max(2, root.u * 0.55)
+                    color: root.outline
+                }
+            }
+
+            Rectangle {
+                anchors {
+                    left: rearWheel.horizontalCenter
+                    right: frontWheel.horizontalCenter
+                    verticalCenter: rearWheel.verticalCenter
+                    verticalCenterOffset: -root.u * 1.4
+                }
+                height: Math.max(2, root.u * 0.55)
+                color: root.outline
+            }
+
+            Rectangle {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    bottom: parent.bottom
+                    bottomMargin: root.u * 2.8
+                }
+                width: root.u * 2.2
+                height: Math.max(2, root.u * 0.55)
+                color: root.outline
+            }
+        }
+
+        // Hands — finish / run / swim / bike
         Item {
             id: handPivot
 
             visible: !root.fallen
-            x: body.x + body.width * 0.88
-            y: body.y + body.height * 0.22 + (root.running ? runHand.lift : 0)
+            x: body.x + body.width * (root.swimming ? 0.72 : 0.88)
+            y: body.y + body.height * (root.swimming ? 0.05 : 0.22)
+                 + (root.running ? runHand.lift : 0)
+                 + (root.swimming ? -root.u * 0.4 : 0)
             width: 0
             height: 0
             rotation: root.celebrating ? finishHand.angle
                         : root.running ? root.armRunAngle
+                        : root.swimming ? swimHand.angle
+                        : root.biking ? root.armBikeAngle
                         : root.armRestAngle
             z: 4
 
             Rectangle {
-                x: (root.running ? root.armRunReach : root.armLength) - width * 0.5
+                x: (root.running ? root.armRunReach
+                    : root.swimming ? root.armSwimReach
+                    : root.biking ? root.armBikeReach
+                    : root.armLength) - width * 0.5
                 y: -height * 0.5
                 width: root.u * 2.2
                 height: root.u * 2.2
@@ -361,16 +457,23 @@ Item {
         Item {
             id: leftHandPivot
 
-            visible: root.running && !root.fallen
-            x: body.x + body.width * 0.12
-            y: body.y + body.height * 0.22 - runHand.lift
+            visible: (root.running || root.swimming || root.biking) && !root.fallen
+            x: body.x + body.width * (root.swimming ? 0.28 : 0.12)
+            y: body.y + body.height * (root.swimming ? 0.05 : 0.22)
+                 - (root.running ? runHand.lift : 0)
+                 + (root.swimming ? -root.u * 0.4 : 0)
             width: 0
             height: 0
-            rotation: -root.armRunAngle
+            rotation: root.running ? -root.armRunAngle
+                        : root.swimming ? -swimHand.angle
+                        : root.biking ? -root.armBikeAngle
+                        : 0
             z: 4
 
             Rectangle {
-                x: -(root.armRunReach + width * 0.5)
+                x: -((root.running ? root.armRunReach
+                      : root.swimming ? root.armSwimReach
+                      : root.armBikeReach) + width * 0.5)
                 y: -height * 0.5
                 width: root.u * 2.2
                 height: root.u * 2.2
@@ -383,13 +486,15 @@ Item {
             }
         }
 
-        // Capsule body
+        // Capsule body — hidden while swimming (only head + arms above water)
         Item {
             id: body
 
+            visible: !root.swimming || root.fallen
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 bottom: parent.bottom
+                bottomMargin: (root.biking && !root.fallen) ? root.u * 2.8 : 0
             }
             width: root.u * 8.5
             height: root.u * 10
@@ -585,6 +690,10 @@ Item {
         property real lift: 0
     }
 
+    readonly property QtObject swimHand: QtObject {
+        property real angle: 0
+    }
+
     readonly property QtObject fallTilt: QtObject {
         property real angle: 0
     }
@@ -748,6 +857,92 @@ Item {
                     to: root.armRunLiftLow
                     duration: root.runBeat
                     easing.type: Easing.InQuad
+                }
+            }
+        }
+    }
+
+    readonly property SequentialAnimation swimAnim: SequentialAnimation {
+        running: root.visible && root.pose === "swim"
+
+        PauseAnimation {
+            duration: root.swimPhase
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: root.u * 0.7
+                    duration: root.swimBeat
+                    easing.type: Easing.InOutSine
+                }
+                NumberAnimation {
+                    target: swimHand
+                    property: "angle"
+                    to: -95
+                    duration: root.swimBeat
+                    easing.type: Easing.InOutSine
+                }
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: 0
+                    duration: root.swimBeat
+                    easing.type: Easing.InOutSine
+                }
+                NumberAnimation {
+                    target: swimHand
+                    property: "angle"
+                    to: 55
+                    duration: root.swimBeat
+                    easing.type: Easing.InOutSine
+                }
+            }
+        }
+    }
+
+    readonly property SequentialAnimation bikeAnim: SequentialAnimation {
+        running: root.visible && root.pose === "bike"
+
+        PauseAnimation {
+            duration: root.bikePhase
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: root.u * 0.5
+                    duration: root.bikeBeat
+                    easing.type: Easing.InOutSine
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: 3
+                    duration: root.bikeBeat
+                }
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: 0
+                    duration: root.bikeBeat
+                    easing.type: Easing.InOutSine
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: -2
+                    duration: root.bikeBeat
                 }
             }
         }
