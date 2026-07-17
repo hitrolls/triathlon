@@ -28,53 +28,116 @@ Item {
         pose = dead ? "dead" : "injured"
     }
 
-    // Ground shadow — stays fixed on the ground (outside figure transform)
+    function prepFall() {
+        bob.offset = 0
+        lean.angle = 0
+        stride.offset = 0
+        bloodBleed.amount = 0.1
+        headBloodBleed.amount = 0
+        fallTilt.angle = 0
+        fallSlide.x = 0
+        fallSlide.y = 0
+        headRoll.x = 0
+        headRoll.y = 0
+        headRoll.rotation = 0
+        headRoll.gone = false
+
+        const spin = Math.random() < 0.5 ? 1 : -1
+        const dead = root.pose === "dead"
+        const dir = Math.random() * Math.PI * 2
+        const air = root.u * (dead ? 10 + Math.random() * 3 : 6.5 + Math.random() * 2.5)
+        const land = air * (0.72 + Math.random() * 0.1)
+        fallTargets.tilt = spin * (dead ? 400 + Math.random() * 120 : 260 + Math.random() * 100)
+        fallTargets.airX = Math.sin(dir) * air
+        fallTargets.airY = -Math.cos(dir) * air
+        fallTargets.landX = Math.sin(dir) * land
+        fallTargets.landY = -Math.cos(dir) * land
+        fallTargets.headX = spin * root.u * (5 + Math.random() * 4)
+        fallTargets.headRot = spin * (360 + Math.random() * 240)
+        bloodSpreadAnim.start()
+    }
+
+    // Ground shadow — under feet when upright
     Rectangle {
+        visible: !root.fallen
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
             bottomMargin: root.u * 0.4
         }
-        width: root.u * (root.fallen ? 14 : 10)
-        height: root.u * (root.fallen ? 3.2 : 2.4)
+        width: root.u * 10
+        height: root.u * 2.4
         radius: height / 2
         color: "#33000000"
-        scale: root.fallen ? 1.05 : 1 - bob.offset / (root.u * 18)
+        scale: 1 - bob.offset / (root.u * 18)
     }
 
-    // Blood puddle on the ground (outside figure transform)
+    // Fallen shadow + blood — same slide as figure, no rotation
     Item {
-        id: bloodPuddle
+        id: groundFx
 
         visible: root.fallen
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            bottomMargin: root.u * 0.1
+            bottomMargin: root.u * 2.2
         }
-        width: root.u * 20
-        height: root.u * 5
-        scale: bloodBleed.amount
-        transformOrigin: Item.Bottom
+        width: root.u * 12
+        height: root.u * 16
+        z: -1
 
-        Repeater {
-            model: 5
+        transform: Translate {
+            x: fallSlide.x
+            y: fallSlide.y
+        }
 
-            Rectangle {
-                required property int index
+        // Shadow at body bottom
+        Rectangle {
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: parent.bottom
+                bottomMargin: -height * 0.35
+            }
+            width: root.u * 14
+            height: root.u * 3.2
+            radius: height / 2
+            color: "#33000000"
+            scale: 1.05
+        }
 
-                readonly property real offset: index * 1.05
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                    horizontalCenterOffset: Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
-                    verticalCenter: parent.verticalCenter
-                    verticalCenterOffset: Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
+        // Blood from body center (body height 11u, bottom-aligned)
+        Item {
+            id: bloodPuddle
+
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                verticalCenter: parent.bottom
+                verticalCenterOffset: -root.u * 5.5
+            }
+            width: root.u * 20
+            height: root.u * 5
+            scale: bloodBleed.amount
+            transformOrigin: Item.Center
+
+            Repeater {
+                model: 5
+
+                Rectangle {
+                    required property int index
+
+                    readonly property real offset: index * 1.05
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                        horizontalCenterOffset: Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
+                        verticalCenter: parent.verticalCenter
+                        verticalCenterOffset: Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
+                    }
+                    width: root.u * (6.5 + index * 1.2)
+                    height: root.u * (2.0 + index * 0.25)
+                    radius: height / 2
+                    color: index < 2 ? "#e53935" : (index < 4 ? "#d32f2f" : "#b71c1c")
+                    opacity: 0.92 - index * 0.05
                 }
-                width: root.u * (6.5 + index * 1.2)
-                height: root.u * (2.0 + index * 0.25)
-                radius: height / 2
-                color: index < 2 ? "#e53935" : (index < 4 ? "#d32f2f" : "#b71c1c")
-                opacity: 0.92 - index * 0.05
             }
         }
     }
@@ -92,13 +155,13 @@ Item {
 
         transform: [
             Rotation {
-                origin.x: figure.width * 0.42
-                origin.y: figure.height * 0.75
+                origin.x: figure.width * (root.fallen ? 0.5 : 0.42)
+                origin.y: figure.height * (root.fallen ? 0.5 : 0.75)
                 angle: root.fallen ? fallTilt.angle : lean.angle
             },
             Translate {
-                y: -bob.offset
-                x: root.running ? stride.offset : 0
+                y: -bob.offset + (root.fallen ? fallSlide.y : 0)
+                x: (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
             }
         ]
 
@@ -330,6 +393,25 @@ Item {
     }
 
     QtObject {
+        id: fallSlide
+
+        property real x: 0
+        property real y: 0
+    }
+
+    QtObject {
+        id: fallTargets
+
+        property real tilt: 0
+        property real airX: 0
+        property real airY: 0
+        property real landX: 0
+        property real landY: 0
+        property real headX: 0
+        property real headRot: 0
+    }
+
+    QtObject {
         id: headRoll
 
         property real x: 0
@@ -477,30 +559,47 @@ Item {
     }
 
     readonly property SequentialAnimation fallAnim: SequentialAnimation {
-        running: root.visible && root.fallen
-
-        ScriptAction {
-            script: {
-                bob.offset = 0
-                lean.angle = 0
-                stride.offset = 0
-                bloodBleed.amount = 0.12
-                headBloodBleed.amount = 0
-                const side = Math.random() < 0.5 ? 1 : -1
-                fallTilt.angle = 0
-                fallTwist.to = side * (root.pose === "dead" ? 92 : 68)
-                headRollX.to = side * root.u * 10
-                headRollRot.to = side * 420
-                bloodSpreadAnim.start()
+        ParallelAnimation {
+            NumberAnimation {
+                target: fallTilt
+                property: "angle"
+                from: 0
+                to: fallTargets.tilt
+                duration: 140
+                easing.type: Easing.InQuad
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "x"
+                from: 0
+                to: fallTargets.airX
+                duration: 140
+                easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "y"
+                from: 0
+                to: fallTargets.airY
+                duration: 140
+                easing.type: Easing.OutCubic
             }
         }
-        NumberAnimation {
-            id: fallTwist
-
-            target: fallTilt
-            property: "angle"
-            duration: 420
-            easing.type: Easing.InQuad
+        ParallelAnimation {
+            NumberAnimation {
+                target: fallSlide
+                property: "x"
+                to: fallTargets.landX
+                duration: 55
+                easing.type: Easing.InQuad
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "y"
+                to: fallTargets.landY
+                duration: 55
+                easing.type: Easing.InQuad
+            }
         }
         ScriptAction {
             script: {
@@ -514,7 +613,7 @@ Item {
         target: bloodBleed
         property: "amount"
         to: 1
-        duration: 2200
+        duration: 700
         easing.type: Easing.OutCubic
     }
 
@@ -522,32 +621,33 @@ Item {
         target: headBloodBleed
         property: "amount"
         to: 1
-        duration: 1600
+        duration: 500
         easing.type: Easing.OutCubic
     }
 
     readonly property ParallelAnimation headDetachAnim: ParallelAnimation {
         NumberAnimation {
-            id: headRollX
-
             target: headRoll
             property: "x"
-            duration: 700
+            from: 0
+            to: fallTargets.headX
+            duration: 260
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
             target: headRoll
             property: "y"
-            to: root.u * 6
-            duration: 700
+            from: 0
+            to: root.u * 5
+            duration: 260
             easing.type: Easing.InQuad
         }
         NumberAnimation {
-            id: headRollRot
-
             target: headRoll
             property: "rotation"
-            duration: 700
+            from: 0
+            to: fallTargets.headRot
+            duration: 260
         }
 
         onFinished: {
@@ -559,15 +659,21 @@ Item {
     }
 
     onPoseChanged: {
-        if (!fallen) {
+        if (pose === "injured" || pose === "dead") {
+            prepFall()
+            Qt.callLater(() => fallAnim.restart())
+        } else {
+            fallAnim.stop()
+            headDetachAnim.stop()
+            bloodSpreadAnim.stop()
+            headBloodSpreadAnim.stop()
             fallTilt.angle = 0
+            fallSlide.x = 0
+            fallSlide.y = 0
             headRoll.x = 0
             headRoll.y = 0
             headRoll.rotation = 0
             headRoll.gone = false
-            headDetachAnim.stop()
-            bloodSpreadAnim.stop()
-            headBloodSpreadAnim.stop()
             bloodBleed.amount = 0
             headBloodBleed.amount = 0
         }
