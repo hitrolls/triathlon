@@ -377,7 +377,7 @@ Item {
                 radius: width / 2
                 color: "transparent"
                 border {
-                    width: Math.max(1, root.u * 0.45)
+                    width: 3
                     color: root.outline
                 }
                 transform: Scale {
@@ -547,7 +547,7 @@ Item {
                 radius: width / 2
                 color: "transparent"
                 border {
-                    width: Math.max(2, root.u * 0.55)
+                    width: 3
                     color: root.outline
                 }
                 transform: Scale {

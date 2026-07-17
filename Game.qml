@@ -4,7 +4,7 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    property int currentScreen: 1
+    property int currentScreen: 0
 
     StackLayout {
         anchors.fill: parent

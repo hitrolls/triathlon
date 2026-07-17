@@ -88,13 +88,13 @@ Item {
             index: 0
             text: qsTr("Race")
             emoji: "🏁"
+            badge: true
         }
 
         HubTabButton {
             index: 1
             text: qsTr("Athletes")
             emoji: "👥"
-            badge: true
         }
 
         HubTabButton {
