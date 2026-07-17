@@ -26,6 +26,7 @@ qt_add_qml_module(appTriathlon
         BankScreen.qml
         HubTabBar.qml
         RaceTabBar.qml
+        Athlete.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
