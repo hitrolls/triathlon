@@ -154,7 +154,7 @@ Item {
 
         parent: root.shadowsLayer
         visible: false
-        width: root.u * (root.fallen ? 14 : 10)
+        width: root.u * (root.fallen ? 8 : 6)
         height: root.u * (root.fallen ? 3.2 : 2.4)
         radius: height / 2
         color: "#33000000"
@@ -166,7 +166,7 @@ Item {
 
         parent: root.shadowsLayer
         visible: false
-        width: root.u * 5.5
+        width: root.u * 3.5
         height: root.u * 1.6
         radius: height / 2
         color: "#33000000"
@@ -343,7 +343,7 @@ Item {
                 bottom: parent.bottom
             }
             width: root.u * 8.5
-            height: root.u * 11
+            height: root.u * 10
 
             Rectangle {
                 anchors.fill: parent
