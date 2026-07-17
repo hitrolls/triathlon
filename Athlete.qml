@@ -14,6 +14,15 @@ Item {
     property Item shadowsLayer: null
     property Item bloodLayer: null
     property int shadowDepth: 0
+    // -1 = back to camera (running up), +1 = face to camera (running down)
+    property real facing: -1
+
+    Behavior on facing {
+        NumberAnimation {
+            duration: 280
+            easing.type: Easing.InOutQuad
+        }
+    }
 
     readonly property real u: 4 * scaleFactor
     readonly property color outline: "#1a1a1a"
@@ -22,6 +31,7 @@ Item {
     readonly property bool fallen: pose === "injured" || pose === "dead"
     readonly property bool celebrating: pose === "finish"
     readonly property bool running: pose === "run"
+    readonly property real faceAmount: Math.max(0, root.facing)
     // Fall slide moves the body in local space; RaceScreen uses this for z-order
     readonly property real depthBias: root.fallen ? fallSlide.y : 0
 
@@ -469,15 +479,17 @@ Item {
                 opacity: 0.5
             }
 
-            // Eyes — two vertical dashes
+            // Eyes — visible when facing the camera; slide in from the side while turning
             Row {
                 anchors {
                     horizontalCenter: parent.horizontalCenter
-                    horizontalCenterOffset: root.u * 0.35
+                    horizontalCenterOffset: root.u * (0.95 - 0.95 * root.faceAmount)
                     verticalCenter: parent.verticalCenter
                     verticalCenterOffset: -root.u * 0.15
                 }
-                spacing: root.u * 1.15
+                spacing: root.u * (0.7 + 0.45 * root.faceAmount)
+                visible: root.faceAmount > 0.02
+                opacity: root.faceAmount
 
                 Repeater {
                     model: 2

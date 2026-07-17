@@ -199,12 +199,33 @@ Item {
                     required property string pose
                     required property bool headDetached
 
+                    property real moveFacing: -1
+                    property real lastTrackY: -1
+                    readonly property real facing: (pose === "warmup" || pose === "finish")
+                                                   ? 1 : moveFacing
+
                     width: athlete.width
                     height: athlete.height
                     x: (lane.width - width) / 2 + laneOffset
                     y: lane.yAtProgress(progress) - height
                     // Depth from on-screen Y; include fall slide so corpses don't float over runners ahead
                     z: Math.max(1, Math.round(y + height + athlete.depthBias))
+
+                    onYChanged: {
+                        if (lastTrackY < 0 || Math.abs(y - lastTrackY) > height * 0.5) {
+                            lastTrackY = y
+                            return
+                        }
+                        const dy = y - lastTrackY
+                        if (Math.abs(dy) > 0.25)
+                            moveFacing = dy > 0 ? 1 : -1
+                        lastTrackY = y
+                    }
+
+                    onPoseChanged: {
+                        if (pose === "run")
+                            moveFacing = -1
+                    }
 
                     Athlete {
                         id: athlete
@@ -215,6 +236,7 @@ Item {
                         scaleFactor: runner.scaleFactor
                         pose: runner.pose
                         headDetached: runner.headDetached
+                        facing: runner.facing
                         shadowsLayer: athleteShadows
                         bloodLayer: athleteBlood
                         shadowDepth: runner.z
