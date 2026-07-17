@@ -494,13 +494,41 @@ Item {
                 Repeater {
                     model: 2
 
-                    Rectangle {
+                    Item {
                         required property int index
 
-                        width: root.u * 0.7
-                        height: root.u * 1.55
-                        radius: width / 2
-                        color: root.outline
+                        width: root.u * (root.pose === "dead" ? 1.15 : 0.7)
+                        height: root.u * (root.pose === "dead" ? 1.15 : 1.55)
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: width / 2
+                            color: root.outline
+                            visible: root.pose !== "dead"
+                        }
+
+                        Item {
+                            anchors.centerIn: parent
+                            width: parent.width
+                            height: parent.height
+                            visible: root.pose === "dead"
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width * 1.25
+                                height: Math.max(1, root.u * 0.38)
+                                color: root.outline
+                                rotation: 45
+                            }
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width * 1.25
+                                height: Math.max(1, root.u * 0.38)
+                                color: root.outline
+                                rotation: -45
+                            }
+                        }
                     }
                 }
             }

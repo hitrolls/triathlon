@@ -225,6 +225,8 @@ Item {
                     onPoseChanged: {
                         if (pose === "run")
                             moveFacing = -1
+                        else if (pose === "dead")
+                            moveFacing = Math.random() < 0.5 ? 1 : -1
                     }
 
                     Athlete {
