@@ -5,6 +5,8 @@ Item {
     id: root
 
     property bool racing: false
+    // Animation test: 3 athletes per discipline at race start. Set false for normal race.
+    property bool debugMultiTrackStart: true
 
     signal requestHub(int tab)
 
@@ -33,10 +35,44 @@ Item {
         return "run"
     }
 
-    function startRace() {
+    // Start of each discipline (shore entry / mount / run start)
+    function debugStartProgress(index) {
+        const group = Math.floor(index / 3)
+        if (group === 1)
+            return course.segmentLen * 2
+        if (group === 2)
+            return course.segmentLen * 4
+        return 0
+    }
+
+    function placeAthletesForWarmup() {
+        const limit = root.debugMultiTrackStart ? athletesModel.count : 3
         for (let i = 0; i < athletesModel.count; ++i) {
-            athletesModel.setProperty(i, "progress", 0)
-            athletesModel.setProperty(i, "pose", root.poseForProgress(0))
+            if (i >= limit) {
+                athletesModel.setProperty(i, "progress", 0)
+                athletesModel.setProperty(i, "pose", "warmup")
+                athletesModel.setProperty(i, "headDetached", false)
+                continue
+            }
+            const progress = root.debugMultiTrackStart ? root.debugStartProgress(i) : 0
+            athletesModel.setProperty(i, "progress", progress)
+            athletesModel.setProperty(i, "pose", "warmup")
+            athletesModel.setProperty(i, "headDetached", false)
+        }
+    }
+
+    function startRace() {
+        const limit = root.debugMultiTrackStart ? athletesModel.count : 3
+        for (let i = 0; i < athletesModel.count; ++i) {
+            if (i >= limit) {
+                athletesModel.setProperty(i, "progress", 0)
+                athletesModel.setProperty(i, "pose", "warmup")
+                athletesModel.setProperty(i, "headDetached", false)
+                continue
+            }
+            const progress = root.debugMultiTrackStart ? root.debugStartProgress(i) : 0
+            athletesModel.setProperty(i, "progress", progress)
+            athletesModel.setProperty(i, "pose", root.poseForProgress(progress))
             athletesModel.setProperty(i, "headDetached", false)
         }
         root.racing = true
@@ -45,6 +81,8 @@ Item {
     function endRace() {
         root.racing = false
     }
+
+    Component.onCompleted: root.placeAthletesForWarmup()
 
     function speedScaleAt(p) {
         const d = course.disciplineAt(p)
@@ -93,6 +131,7 @@ Item {
     }
 
     readonly property ListModel athletesModel: ListModel {
+        // Swim trio
         ListElement {
             number: 7
             jerseyColor: "#e85d4c"
@@ -125,6 +164,74 @@ Item {
             pose: "warmup"
             headDetached: false
             speed: 0.05
+        }
+        // Bike trio (debugMultiTrackStart)
+        ListElement {
+            number: 21
+            jerseyColor: "#c47a2c"
+            accentColor: "#f2efe8"
+            scaleFactor: 1.1
+            laneOffset: -14
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.045
+        }
+        ListElement {
+            number: 18
+            jerseyColor: "#6b5b95"
+            accentColor: "#ffe08a"
+            scaleFactor: 1.0
+            laneOffset: 2
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.035
+        }
+        ListElement {
+            number: 9
+            jerseyColor: "#2a9d8f"
+            accentColor: "#f2efe8"
+            scaleFactor: 0.98
+            laneOffset: 16
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.042
+        }
+        // Run trio (debugMultiTrackStart)
+        ListElement {
+            number: 4
+            jerseyColor: "#d64045"
+            accentColor: "#ffe08a"
+            scaleFactor: 1.12
+            laneOffset: -14
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.038
+        }
+        ListElement {
+            number: 15
+            jerseyColor: "#457b9d"
+            accentColor: "#f2efe8"
+            scaleFactor: 1.02
+            laneOffset: 2
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.048
+        }
+        ListElement {
+            number: 11
+            jerseyColor: "#8a5a44"
+            accentColor: "#ffe08a"
+            scaleFactor: 0.92
+            laneOffset: 16
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.033
         }
     }
 
@@ -420,6 +527,7 @@ Item {
                 Item {
                     id: runner
 
+                    required property int index
                     required property int number
                     required property string jerseyColor
                     required property string accentColor
@@ -435,6 +543,7 @@ Item {
                                                    ? 1 : moveFacing
                     readonly property var trackPoint: course.pointAtProgress(progress)
 
+                    visible: index < 3 || root.debugMultiTrackStart
                     width: athlete.width
                     height: athlete.height
                     x: trackPoint.x + trackPoint.nx * laneOffset - width * 0.5
