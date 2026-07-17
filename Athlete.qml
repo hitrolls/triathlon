@@ -42,18 +42,22 @@ Item {
         headRoll.rotation = 0
         headRoll.gone = false
 
-        const spin = Math.random() < 0.5 ? 1 : -1
         const dead = root.pose === "dead"
-        const dir = Math.random() * Math.PI * 2
-        const air = root.u * (dead ? 10 + Math.random() * 3 : 6.5 + Math.random() * 2.5)
-        const land = air * (0.72 + Math.random() * 0.1)
-        fallTargets.tilt = spin * (dead ? 400 + Math.random() * 120 : 260 + Math.random() * 100)
-        fallTargets.airX = Math.sin(dir) * air
-        fallTargets.airY = -Math.cos(dir) * air
-        fallTargets.landX = Math.sin(dir) * land
-        fallTargets.landY = -Math.cos(dir) * land
-        fallTargets.headX = spin * root.u * (5 + Math.random() * 4)
-        fallTargets.headRot = spin * (360 + Math.random() * 240)
+        // Forward = up the track (−Y); yaw fans left/right around that axis
+        const yaw = (Math.random() - 0.5) * (1.1 + Math.random() * 0.9)
+        const spin = (yaw >= 0 ? 1 : -1) * (Math.random() < 0.22 ? -1 : 1)
+        const travel = root.u * (dead ? 14 + Math.random() * 10 : 10 + Math.random() * 8)
+        const hop = root.u * (2 + Math.random() * 4)
+        const mid = 0.45 + Math.random() * 0.2
+        fallTargets.tilt = spin * (dead ? 300 + Math.random() * 220 : 180 + Math.random() * 180)
+        fallTargets.airX = Math.sin(yaw) * travel * mid
+        fallTargets.airY = -Math.cos(yaw) * travel * mid - hop
+        fallTargets.landX = Math.sin(yaw) * travel
+        fallTargets.landY = -Math.cos(yaw) * travel
+        fallTargets.airMs = 180 + Math.random() * 100
+        fallTargets.landMs = 70 + Math.random() * 60
+        fallTargets.headX = spin * root.u * (5 + Math.random() * 5)
+        fallTargets.headRot = spin * (360 + Math.random() * 280)
         bloodSpreadAnim.start()
     }
 
@@ -407,6 +411,8 @@ Item {
         property real airY: 0
         property real landX: 0
         property real landY: 0
+        property real airMs: 220
+        property real landMs: 90
         property real headX: 0
         property real headRot: 0
     }
@@ -564,8 +570,8 @@ Item {
                 target: fallTilt
                 property: "angle"
                 from: 0
-                to: fallTargets.tilt
-                duration: 140
+                to: fallTargets.tilt * 0.72
+                duration: fallTargets.airMs
                 easing.type: Easing.InQuad
             }
             NumberAnimation {
@@ -573,7 +579,7 @@ Item {
                 property: "x"
                 from: 0
                 to: fallTargets.airX
-                duration: 140
+                duration: fallTargets.airMs
                 easing.type: Easing.OutQuad
             }
             NumberAnimation {
@@ -581,23 +587,30 @@ Item {
                 property: "y"
                 from: 0
                 to: fallTargets.airY
-                duration: 140
+                duration: fallTargets.airMs
                 easing.type: Easing.OutCubic
             }
         }
         ParallelAnimation {
             NumberAnimation {
+                target: fallTilt
+                property: "angle"
+                to: fallTargets.tilt
+                duration: fallTargets.landMs
+                easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
                 target: fallSlide
                 property: "x"
                 to: fallTargets.landX
-                duration: 55
+                duration: fallTargets.landMs
                 easing.type: Easing.InQuad
             }
             NumberAnimation {
                 target: fallSlide
                 property: "y"
                 to: fallTargets.landY
-                duration: 55
+                duration: fallTargets.landMs
                 easing.type: Easing.InQuad
             }
         }
