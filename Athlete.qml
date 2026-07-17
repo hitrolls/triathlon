@@ -29,6 +29,13 @@ Item {
     readonly property real runBeat: 105 + Math.random() * 75
     readonly property real finishPhase: Math.random() * 600
     readonly property real finishBeat: 200 + Math.random() * 140
+    readonly property real armLength: root.u * 3.5
+    readonly property real armRestAngle: 38
+    readonly property real armRaiseAngle: -112
+    readonly property real armRunAngle: 58
+    readonly property real armRunReach: root.u * 2.1
+    readonly property real armRunLiftHigh: -root.u * 2.6
+    readonly property real armRunLiftLow: root.u * 2.0
     readonly property real figureOriginX: figure.width * (root.fallen ? 0.5 : 0.42)
     readonly property real figureOriginY: figure.height * (root.fallen ? 0.5 : 0.75)
     readonly property real figureAngle: root.fallen ? fallTilt.angle : lean.angle
@@ -47,6 +54,8 @@ Item {
         bob.offset = 0
         lean.angle = 0
         stride.offset = 0
+        finishHand.angle = root.armRestAngle
+        runHand.lift = 0
     }
 
     function resetFallState() {
@@ -270,20 +279,57 @@ Item {
             }
         ]
 
-        // Optional floating hand
-        Rectangle {
+        // Hands — finish raises the right arm; run pumps both beside the torso (rear view)
+        Item {
+            id: handPivot
+
             visible: !root.fallen
-            x: figure.width - root.u * 1.2
-            y: figure.height * 0.52 + (root.running ? stride.offset * 0.15 : 0)
-            width: root.u * 2.2
-            height: root.u * 2.2
-            radius: width / 2
-            color: root.skinColor
-            border {
-                width: Math.max(1, root.u * 0.45)
-                color: root.outline
+            x: body.x + body.width * 0.88
+            y: body.y + body.height * 0.22 + (root.running ? runHand.lift : 0)
+            width: 0
+            height: 0
+            rotation: root.celebrating ? finishHand.angle
+                        : root.running ? root.armRunAngle
+                        : root.armRestAngle
+            z: root.celebrating ? 4 : 0
+
+            Rectangle {
+                x: (root.running ? root.armRunReach : root.armLength) - width * 0.5
+                y: -height * 0.5
+                width: root.u * 2.2
+                height: root.u * 2.2
+                radius: width / 2
+                color: root.skinColor
+                border {
+                    width: Math.max(1, root.u * 0.45)
+                    color: root.outline
+                }
             }
+        }
+
+        Item {
+            id: leftHandPivot
+
+            visible: root.running && !root.fallen
+            x: body.x + body.width * 0.12
+            y: body.y + body.height * 0.22 - runHand.lift
+            width: 0
+            height: 0
+            rotation: -root.armRunAngle
             z: 0
+
+            Rectangle {
+                x: -(root.armRunReach + width * 0.5)
+                y: -height * 0.5
+                width: root.u * 2.2
+                height: root.u * 2.2
+                radius: width / 2
+                color: root.skinColor
+                border {
+                    width: Math.max(1, root.u * 0.45)
+                    color: root.outline
+                }
+            }
         }
 
         // Capsule body
@@ -485,6 +531,14 @@ Item {
         property real offset: 0
     }
 
+    readonly property QtObject finishHand: QtObject {
+        property real angle: 0
+    }
+
+    readonly property QtObject runHand: QtObject {
+        property real lift: 0
+    }
+
     readonly property QtObject fallTilt: QtObject {
         property real angle: 0
     }
@@ -614,6 +668,13 @@ Item {
                     to: 6
                     duration: root.runBeat
                 }
+                NumberAnimation {
+                    target: runHand
+                    property: "lift"
+                    to: root.armRunLiftHigh
+                    duration: root.runBeat
+                    easing.type: Easing.OutQuad
+                }
             }
             ParallelAnimation {
                 NumberAnimation {
@@ -635,6 +696,13 @@ Item {
                     to: -4
                     duration: root.runBeat
                 }
+                NumberAnimation {
+                    target: runHand
+                    property: "lift"
+                    to: root.armRunLiftLow
+                    duration: root.runBeat
+                    easing.type: Easing.InQuad
+                }
             }
         }
     }
@@ -648,19 +716,39 @@ Item {
         SequentialAnimation {
             loops: Animation.Infinite
 
-            NumberAnimation {
-                target: bob
-                property: "offset"
-                to: root.u * 3.2
-                duration: root.finishBeat
-                easing.type: Easing.OutQuad
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: root.u * 3.2
+                    duration: root.finishBeat
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: finishHand
+                    property: "angle"
+                    from: root.armRestAngle
+                    to: root.armRaiseAngle
+                    duration: root.finishBeat
+                    easing.type: Easing.OutQuad
+                }
             }
-            NumberAnimation {
-                target: bob
-                property: "offset"
-                to: 0
-                duration: root.finishBeat
-                easing.type: Easing.InQuad
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: 0
+                    duration: root.finishBeat
+                    easing.type: Easing.InQuad
+                }
+                NumberAnimation {
+                    target: finishHand
+                    property: "angle"
+                    from: root.armRaiseAngle
+                    to: root.armRestAngle
+                    duration: root.finishBeat
+                    easing.type: Easing.InQuad
+                }
             }
         }
     }
