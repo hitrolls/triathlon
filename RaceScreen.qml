@@ -177,6 +177,13 @@ Item {
                 z: 0
             }
 
+            Item {
+                id: athleteBlood
+
+                anchors.fill: parent
+                z: 0
+            }
+
             Repeater {
                 model: root.athletesModel
 
@@ -209,6 +216,7 @@ Item {
                         pose: runner.pose
                         headDetached: runner.headDetached
                         shadowsLayer: athleteShadows
+                        bloodLayer: athleteBlood
                         shadowDepth: runner.z
                     }
                 }

@@ -12,6 +12,7 @@ Item {
     property bool headDetached: false
     property real scaleFactor: 1
     property Item shadowsLayer: null
+    property Item bloodLayer: null
     property int shadowDepth: 0
 
     readonly property real u: 4 * scaleFactor
@@ -148,7 +149,7 @@ Item {
         return root.pinInLayer(item, cx + localX, cy + localY, layer, groundContact)
     }
 
-    // Shadows live on RaceScreen.athleteShadows; follow world-bottom of body/head
+    // Shadows / blood live on RaceScreen layers; follow body/head in world space
     Rectangle {
         id: bodyShadow
 
@@ -173,88 +174,126 @@ Item {
         z: root.shadowDepth
     }
 
+    Item {
+        id: bodyBlood
+
+        parent: root.bloodLayer
+        visible: false
+        width: root.u * 20
+        height: root.u * 5
+        scale: bloodBleed.amount
+        transformOrigin: Item.Center
+        z: root.shadowDepth
+
+        Repeater {
+            model: 5
+
+            Rectangle {
+                required property int index
+
+                readonly property real offset: index * 1.05
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    horizontalCenterOffset: Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
+                    verticalCenter: parent.verticalCenter
+                    verticalCenterOffset: Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
+                }
+                width: root.u * (6.5 + index * 1.2)
+                height: root.u * (2.0 + index * 0.25)
+                radius: height / 2
+                color: index < 2 ? "#e53935" : (index < 4 ? "#d32f2f" : "#b71c1c")
+                opacity: 0.92 - index * 0.05
+            }
+        }
+    }
+
+    Item {
+        id: headBlood
+
+        parent: root.bloodLayer
+        visible: false
+        width: root.u * 10
+        height: root.u * 3.6
+        scale: headBloodBleed.amount
+        transformOrigin: Item.Center
+        z: root.shadowDepth
+
+        Repeater {
+            model: 4
+
+            Rectangle {
+                required property int index
+
+                readonly property real offset: index * 1.05
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    horizontalCenterOffset: Math.cos(index * 1.7) * root.u * (0.4 + offset * 0.7)
+                    verticalCenter: parent.verticalCenter
+                    verticalCenterOffset: Math.sin(index * 1.3) * root.u * (0.12 + offset * 0.1)
+                }
+                width: root.u * (4.2 + index * 0.9)
+                height: root.u * (1.5 + index * 0.2)
+                radius: height / 2
+                color: index < 2 ? "#e53935" : (index < 3 ? "#d32f2f" : "#b71c1c")
+                opacity: 0.9 - index * 0.06
+            }
+        }
+    }
+
     FrameAnimation {
-        running: root.visible && root.shadowsLayer !== null
+        running: root.visible && (root.shadowsLayer !== null || root.bloodLayer !== null)
 
         onRunningChanged: {
             if (running)
                 return
             bodyShadow.visible = false
             headShadow.visible = false
+            bodyBlood.visible = false
+            headBlood.visible = false
         }
 
         onTriggered: {
-            const layer = root.shadowsLayer
-            if (!layer)
-                return
+            const shadows = root.shadowsLayer
+            if (shadows) {
+                const bodyPt = root.lowestInLayer(body, shadows, true)
+                bodyShadow.x = bodyPt.x - bodyShadow.width * 0.5
+                bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5
+                bodyShadow.visible = true
 
-            const bodyPt = root.lowestInLayer(body, layer, true)
-            bodyShadow.x = bodyPt.x - bodyShadow.width * 0.5
-            bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5
-            bodyShadow.visible = true
-
-            const showHead = root.headDetached && head.visible
-            if (showHead) {
-                const headPt = root.lowestInLayer(head, layer, true)
-                headShadow.x = headPt.x - headShadow.width * 0.5
-                headShadow.y = headPt.y - headShadow.height * 0.5
-            }
-            headShadow.visible = showHead
-        }
-    }
-
-    // Blood — same slide as figure, no rotation
-    Item {
-        id: groundFx
-
-        visible: root.fallen
-        anchors {
-            horizontalCenter: parent.horizontalCenter
-            bottom: parent.bottom
-            bottomMargin: root.u * 2.2
-        }
-        width: root.u * 12
-        height: root.u * 16
-        z: -1
-
-        transform: Translate {
-            x: fallSlide.x
-            y: fallSlide.y
-        }
-
-        Item {
-            id: bloodPuddle
-
-            anchors {
-                horizontalCenter: parent.horizontalCenter
-                verticalCenter: parent.bottom
-                verticalCenterOffset: -root.u * 5.5
-            }
-            width: root.u * 20
-            height: root.u * 5
-            scale: bloodBleed.amount
-            transformOrigin: Item.Center
-
-            Repeater {
-                model: 5
-
-                Rectangle {
-                    required property int index
-
-                    readonly property real offset: index * 1.05
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        horizontalCenterOffset: Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
-                        verticalCenter: parent.verticalCenter
-                        verticalCenterOffset: Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
-                    }
-                    width: root.u * (6.5 + index * 1.2)
-                    height: root.u * (2.0 + index * 0.25)
-                    radius: height / 2
-                    color: index < 2 ? "#e53935" : (index < 4 ? "#d32f2f" : "#b71c1c")
-                    opacity: 0.92 - index * 0.05
+                const showHeadShadow = root.headDetached && head.visible
+                if (showHeadShadow) {
+                    const headPt = root.lowestInLayer(head, shadows, true)
+                    headShadow.x = headPt.x - headShadow.width * 0.5
+                    headShadow.y = headPt.y - headShadow.height * 0.5
                 }
+                headShadow.visible = showHeadShadow
             }
+
+            const blood = root.bloodLayer
+            if (!blood) {
+                bodyBlood.visible = false
+                headBlood.visible = false
+                return
+            }
+
+            const showBodyBlood = root.fallen && bloodBleed.amount > 0
+            if (showBodyBlood) {
+                // Flat puddle: same slide as figure, no rotation (impact point under torso)
+                const puddlePt = root.mapToItem(blood,
+                                                root.width * 0.5 + fallSlide.x,
+                                                root.height - root.u * 7.7 + fallSlide.y)
+                bodyBlood.x = puddlePt.x - bodyBlood.width * 0.5
+                bodyBlood.y = puddlePt.y - bodyBlood.height * 0.5
+            }
+            bodyBlood.visible = showBodyBlood
+
+            const showHeadBlood = root.fallen && root.headDetached && head.visible && headBloodBleed.amount > 0
+            if (showHeadBlood) {
+                const headPt = root.pinInLayer(head, head.width * 0.5, head.height * 0.5, blood, true)
+                headBlood.x = headPt.x - headBlood.width * 0.5
+                headBlood.y = headPt.y - headBlood.height * 0.5
+            }
+            headBlood.visible = showHeadBlood
         }
     }
 
@@ -390,41 +429,6 @@ Item {
                         pixelSize: Math.round(root.u * 2.8)
                         bold: true
                     }
-                }
-            }
-        }
-
-        // Blood under detached head — same position space as head, counter-rotated flat
-        Item {
-            id: headBloodPuddle
-
-            visible: root.fallen && root.headDetached && headBloodBleed.amount > 0
-            x: head.x + (head.width - width) * 0.5
-            y: head.y + (head.height - height) * 0.5
-            width: root.u * 10
-            height: root.u * 3.6
-            rotation: root.fallen ? -fallTilt.angle : 0
-            scale: headBloodBleed.amount
-            z: 1
-
-            Repeater {
-                model: 4
-
-                Rectangle {
-                    required property int index
-
-                    readonly property real offset: index * 1.05
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        horizontalCenterOffset: Math.cos(index * 1.7) * root.u * (0.4 + offset * 0.7)
-                        verticalCenter: parent.verticalCenter
-                        verticalCenterOffset: Math.sin(index * 1.3) * root.u * (0.12 + offset * 0.1)
-                    }
-                    width: root.u * (4.2 + index * 0.9)
-                    height: root.u * (1.5 + index * 0.2)
-                    radius: height / 2
-                    color: index < 2 ? "#e53935" : (index < 3 ? "#d32f2f" : "#b71c1c")
-                    opacity: 0.9 - index * 0.06
                 }
             }
         }
