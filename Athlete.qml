@@ -71,6 +71,8 @@ Item {
     readonly property real figureShiftX: (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
     readonly property real figureShiftY: -bob.offset + (root.fallen ? fallSlide.y : 0)
 
+    signal fallSettled()
+
     width: 18 * u
     height: 22 * u
 
@@ -113,7 +115,8 @@ Item {
         bloodBleed.amount = 0.1
 
         const dead = root.pose === "dead"
-        // Forward = up the track (−Y); yaw fans left/right around that axis
+        // Fall along facing: −1 = up the track (−Y), +1 = down (+Y)
+        const forward = root.facing >= 0 ? 1 : -1
         const yaw = (Math.random() - 0.5) * (1.1 + Math.random() * 0.9)
         const spin = (yaw >= 0 ? 1 : -1) * (Math.random() < 0.22 ? -1 : 1)
         const travel = root.u * (dead ? 14 + Math.random() * 10 : 10 + Math.random() * 8)
@@ -121,9 +124,9 @@ Item {
         const mid = 0.45 + Math.random() * 0.2
         fallTargets.tilt = spin * (dead ? 300 + Math.random() * 220 : 180 + Math.random() * 180)
         fallTargets.airX = Math.sin(yaw) * travel * mid
-        fallTargets.airY = -Math.cos(yaw) * travel * mid - hop
+        fallTargets.airY = forward * Math.cos(yaw) * travel * mid - hop
         fallTargets.landX = Math.sin(yaw) * travel
-        fallTargets.landY = -Math.cos(yaw) * travel
+        fallTargets.landY = forward * Math.cos(yaw) * travel
         fallTargets.airMs = 180 + Math.random() * 100
         fallTargets.landMs = 70 + Math.random() * 60
         fallTargets.headX = spin * root.u * (5 + Math.random() * 5)
@@ -1054,6 +1057,7 @@ Item {
             script: {
                 if (root.headDetached)
                     headDetachAnim.start()
+                root.fallSettled()
             }
         }
     }

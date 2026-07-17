@@ -111,9 +111,10 @@ Item {
                 continue
             }
 
-            // Casualties only on the run segment for now (swim/bike/transitions later)
+            // Casualties on run and bike (swim/transitions later)
             const discipline = course.disciplineAt(progress)
-            if (discipline === "run" && progress < 0.98 && Math.random() < 0.35 * dt) {
+            if ((discipline === "run" || discipline === "bike")
+                    && progress < 0.98 && Math.random() < 0.35 * dt) {
                 const dead = Math.random() < 0.45
                 athletesModel.setProperty(i, "progress", progress)
                 athletesModel.setProperty(i, "headDetached", dead && Math.random() < 0.45)
@@ -568,8 +569,8 @@ Item {
                             moveFacing = -1
                         else if (pose === "bike")
                             moveFacing = 1
-                        else if (pose === "dead")
-                            moveFacing = Math.random() < 0.5 ? 1 : -1
+                        // Keep last travel facing for injured/dead so the tumble
+                        // continues in the direction of motion
                     }
 
                     Athlete {
@@ -585,6 +586,8 @@ Item {
                         shadowsLayer: athleteShadows
                         bloodLayer: athleteBlood
                         shadowDepth: runner.z
+
+                        onFallSettled: moveFacing = Math.random() < 0.5 ? 1 : -1
                     }
                 }
             }
