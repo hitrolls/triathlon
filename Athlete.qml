@@ -56,9 +56,9 @@ Item {
     readonly property real armRunLiftHigh: -root.u * 2.6
     readonly property real armRunLiftLow: root.u * 2.0
     readonly property real armSwimReach: root.u * 3.2
-    readonly property real armBikeAngle: -28
-    readonly property real armBikeReach: root.u * 2.8
-    readonly property real bikeLeanAngle: 14
+    readonly property real armBikeAngle: 48
+    readonly property real armBikeReach: root.u * 3.1
+    readonly property real bikeLeanAngle: 18
     // Front-¾ view: rear left/right of body depending on facing
     readonly property real bikeSide: root.facing >= 0 ? 1 : -1
     // Standing: body bottom (shadow) sits this far above item bottom
@@ -283,8 +283,10 @@ Item {
             const shadows = root.shadowsLayer
             if (shadows) {
                 const bodyPt = root.lowestInLayer(body, shadows, true)
+                // Bike: body sits ~wheel-high above ground; drop shadow to the road
+                const bikeShadowDrop = (root.biking && !root.fallen) ? root.u * 2.8 : 0
                 bodyShadow.x = bodyPt.x - bodyShadow.width * 0.5
-                bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5
+                bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5 + bikeShadowDrop
                 bodyShadow.visible = !root.swimming && !root.fallen
 
                 const showHeadShadow = head.visible
@@ -388,8 +390,12 @@ Item {
             id: handPivot
 
             visible: !root.fallen
-            x: body.x + body.width * (root.swimming ? 0.72 : 0.88)
-            y: body.y + body.height * (root.swimming ? 0.05 : 0.22)
+            x: body.x + body.width * (root.swimming ? 0.72
+                                      : root.biking ? 0.68
+                                      : 0.88)
+            y: body.y + body.height * (root.swimming ? 0.05
+                                          : root.biking ? 0.18
+                                          : 0.22)
                  + (root.running ? runHand.lift : 0)
                  + (root.swimming ? -root.u * 0.4 : 0)
             width: 0
@@ -422,8 +428,12 @@ Item {
             id: leftHandPivot
 
             visible: (root.running || root.swimming || root.biking) && !root.fallen
-            x: body.x + body.width * (root.swimming ? 0.28 : 0.12)
-            y: body.y + body.height * (root.swimming ? 0.05 : 0.22)
+            x: body.x + body.width * (root.swimming ? 0.28
+                                      : root.biking ? 0.32
+                                      : 0.12)
+            y: body.y + body.height * (root.swimming ? 0.05
+                                          : root.biking ? 0.18
+                                          : 0.22)
                  - (root.running ? runHand.lift : 0)
                  + (root.swimming ? -root.u * 0.4 : 0)
             width: 0
@@ -460,8 +470,8 @@ Item {
                 bottom: parent.bottom
                 bottomMargin: (root.biking && !root.fallen) ? root.u * 2.8 : 0
             }
-            width: root.u * 8.5
-            height: root.u * 10
+            width: root.u * ((root.biking && !root.fallen) ? 8.9 : 8.5)
+            height: root.u * ((root.biking && !root.fallen) ? 7.8 : 10)
             z: 1
 
             Rectangle {
@@ -562,8 +572,10 @@ Item {
         Item {
             id: head
 
-            x: body.x + body.width * 0.18 + (root.headDetached ? headRoll.x : 0)
-            y: body.y - height * 0.72 + (root.headDetached ? headRoll.y : 0)
+            x: body.x + body.width * ((root.biking && !root.fallen) ? 0.20 : 0.18)
+                 + (root.headDetached ? headRoll.x : 0)
+            y: body.y - height * ((root.biking && !root.fallen) ? 0.48 : 0.72)
+                 + (root.headDetached ? headRoll.y : 0)
             width: root.u * 5.6
             height: root.u * 5.6
             rotation: root.headDetached ? headRoll.rotation : 0
@@ -925,35 +937,19 @@ Item {
         SequentialAnimation {
             loops: Animation.Infinite
 
-            ParallelAnimation {
-                NumberAnimation {
-                    target: bob
-                    property: "offset"
-                    to: root.u * 0.5
-                    duration: root.bikeBeat
-                    easing.type: Easing.InOutSine
-                }
-                NumberAnimation {
-                    target: lean
-                    property: "angle"
-                    to: 3
-                    duration: root.bikeBeat
-                }
+            NumberAnimation {
+                target: lean
+                property: "angle"
+                to: 2
+                duration: root.bikeBeat
+                easing.type: Easing.InOutSine
             }
-            ParallelAnimation {
-                NumberAnimation {
-                    target: bob
-                    property: "offset"
-                    to: 0
-                    duration: root.bikeBeat
-                    easing.type: Easing.InOutSine
-                }
-                NumberAnimation {
-                    target: lean
-                    property: "angle"
-                    to: -2
-                    duration: root.bikeBeat
-                }
+            NumberAnimation {
+                target: lean
+                property: "angle"
+                to: -1.5
+                duration: root.bikeBeat
+                easing.type: Easing.InOutSine
             }
         }
     }
