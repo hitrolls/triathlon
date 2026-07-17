@@ -92,7 +92,7 @@ Item {
         bloodSpreadAnim.start()
     }
 
-    function pinInLayer(item, localX, localY, layer) {
+    function pinInLayer(item, localX, localY, layer, groundContact) {
         // Item local → figure local (includes item rotation/position; not figure transforms)
         const inFigure = item.mapToItem(figure, localX, localY)
 
@@ -107,12 +107,14 @@ Item {
         const rx = ox + dx * cos - dy * sin
         const ry = oy + dx * sin + dy * cos
         const tx = rx + root.figureShiftX
-        const ty = ry + root.figureShiftY
+        const ty = ry + (groundContact
+                        ? (root.fallen ? root.fallSlide.y : 0)
+                        : root.figureShiftY)
 
         return root.mapToItem(layer, figure.x + tx, figure.y + ty)
     }
 
-    function lowestInLayer(item, layer) {
+    function lowestInLayer(item, layer, groundContact) {
         // World-bottom of a vertical capsule (radius = width/2): max Y in layer space
         const w = item.width
         const h = item.height
@@ -121,18 +123,18 @@ Item {
         const cy = h * 0.5
         const halfSeg = Math.max(0, h * 0.5 - r)
 
-        const c = root.pinInLayer(item, cx, cy, layer)
-        const px = root.pinInLayer(item, cx + 1, cy, layer)
-        const py = root.pinInLayer(item, cx, cy + 1, layer)
+        const c = root.pinInLayer(item, cx, cy, layer, groundContact)
+        const px = root.pinInLayer(item, cx + 1, cy, layer, groundContact)
+        const py = root.pinInLayer(item, cx, cy + 1, layer, groundContact)
         const gx = px.y - c.y
         const gy = py.y - c.y
         const glen = Math.hypot(gx, gy)
         if (glen < 1e-6)
-            return root.pinInLayer(item, cx, h, layer)
+            return root.pinInLayer(item, cx, h, layer, groundContact)
 
         const localX = r * gx / glen
         const localY = (gy >= 0 ? halfSeg : -halfSeg) + r * gy / glen
-        return root.pinInLayer(item, cx + localX, cy + localY, layer)
+        return root.pinInLayer(item, cx + localX, cy + localY, layer, groundContact)
     }
 
     // Shadows live on RaceScreen.athleteShadows; follow world-bottom of body/head
@@ -175,14 +177,14 @@ Item {
             if (!layer)
                 return
 
-            const bodyPt = root.lowestInLayer(body, layer)
+            const bodyPt = root.lowestInLayer(body, layer, true)
             bodyShadow.x = bodyPt.x - bodyShadow.width * 0.5
             bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5
             bodyShadow.visible = true
 
             const showHead = root.headDetached && head.visible
             if (showHead) {
-                const headPt = root.lowestInLayer(head, layer)
+                const headPt = root.lowestInLayer(head, layer, true)
                 headShadow.x = headPt.x - headShadow.width * 0.5
                 headShadow.y = headPt.y - headShadow.height * 0.5
             }
