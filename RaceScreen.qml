@@ -8,6 +8,94 @@ Item {
 
     signal requestHub(int tab)
 
+    function startRace() {
+        for (let i = 0; i < athletesModel.count; ++i) {
+            athletesModel.setProperty(i, "progress", 0)
+            athletesModel.setProperty(i, "pose", "run")
+            athletesModel.setProperty(i, "headDetached", false)
+        }
+        root.racing = true
+    }
+
+    function endRace() {
+        root.racing = false
+    }
+
+    function tickRace(dt) {
+        let active = 0
+        for (let i = 0; i < athletesModel.count; ++i) {
+            if (athletesModel.get(i).pose !== "run")
+                continue
+
+            ++active
+            let progress = athletesModel.get(i).progress + athletesModel.get(i).speed * dt
+
+            if (progress >= 1) {
+                athletesModel.setProperty(i, "progress", 1)
+                athletesModel.setProperty(i, "pose", "finish")
+                --active
+                continue
+            }
+
+            if (progress > 0.08 && progress < 0.92 && Math.random() < 0.35 * dt) {
+                const dead = Math.random() < 0.45
+                athletesModel.setProperty(i, "progress", progress)
+                athletesModel.setProperty(i, "headDetached", dead && Math.random() < 0.45)
+                athletesModel.setProperty(i, "pose", dead ? "dead" : "injured")
+                --active
+                continue
+            }
+
+            athletesModel.setProperty(i, "progress", progress)
+        }
+
+        if (active === 0)
+            root.endRace()
+    }
+
+    readonly property ListModel athletesModel: ListModel {
+        ListElement {
+            number: 7
+            jerseyColor: "#e85d4c"
+            accentColor: "#f2efe8"
+            scaleFactor: 1.15
+            laneOffset: -56
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.14
+        }
+        ListElement {
+            number: 12
+            jerseyColor: "#3d7ea6"
+            accentColor: "#ffe08a"
+            scaleFactor: 1.05
+            laneOffset: 8
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.11
+        }
+        ListElement {
+            number: 3
+            jerseyColor: "#5b8c5a"
+            accentColor: "#f2efe8"
+            scaleFactor: 0.95
+            laneOffset: 64
+            progress: 0
+            pose: "warmup"
+            headDetached: false
+            speed: 0.17
+        }
+    }
+
+    readonly property Timer raceTimer: Timer {
+        interval: 16
+        repeat: true
+        running: root.racing
+        onTriggered: root.tickRace(interval / 1000)
+    }
+
     Rectangle {
         id: track
 
@@ -21,8 +109,9 @@ Item {
         }
         color: "#e8e2d4"
 
-        // Simple vertical lane
         Rectangle {
+            id: lane
+
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.top
@@ -37,7 +126,13 @@ Item {
                 color: "#1a1a1a"
             }
 
-            // Finish line
+            readonly property real pathStart: height - 28
+            readonly property real pathEnd: 28
+
+            function yAtProgress(p) {
+                return pathEnd + (1 - p) * (pathStart - pathEnd)
+            }
+
             Rectangle {
                 anchors {
                     left: parent.left
@@ -64,7 +159,6 @@ Item {
                 }
             }
 
-            // Start line
             Rectangle {
                 anchors {
                     left: parent.left
@@ -75,52 +169,40 @@ Item {
                 height: 4
                 color: "#1a1a1a"
             }
-        }
 
-        Athlete {
-            id: athleteA
+            Repeater {
+                model: root.athletesModel
 
-            anchors {
-                horizontalCenter: parent.horizontalCenter
-                horizontalCenterOffset: -56
-                bottom: parent.bottom
-                bottomMargin: 150
+                Item {
+                    id: runner
+
+                    required property int number
+                    required property string jerseyColor
+                    required property string accentColor
+                    required property real scaleFactor
+                    required property real laneOffset
+                    required property real progress
+                    required property string pose
+                    required property bool headDetached
+
+                    width: athlete.width
+                    height: athlete.height
+                    x: (lane.width - width) / 2 + laneOffset
+                    y: lane.yAtProgress(progress) - height
+                    z: Math.round((1 - progress) * 100)
+
+                    Athlete {
+                        id: athlete
+
+                        number: runner.number
+                        jerseyColor: runner.jerseyColor
+                        accentColor: runner.accentColor
+                        scaleFactor: runner.scaleFactor
+                        pose: runner.pose
+                        headDetached: runner.headDetached
+                    }
+                }
             }
-            number: 7
-            jerseyColor: "#e85d4c"
-            pose: "warmup"
-            scaleFactor: 1.15
-        }
-
-        Athlete {
-            id: athleteB
-
-            anchors {
-                horizontalCenter: parent.horizontalCenter
-                horizontalCenterOffset: 8
-                bottom: parent.bottom
-                bottomMargin: 168
-            }
-            number: 12
-            jerseyColor: "#3d7ea6"
-            accentColor: "#ffe08a"
-            pose: "warmup"
-            scaleFactor: 1.05
-        }
-
-        Athlete {
-            id: athleteC
-
-            anchors {
-                horizontalCenter: parent.horizontalCenter
-                horizontalCenterOffset: 64
-                bottom: parent.bottom
-                bottomMargin: 142
-            }
-            number: 3
-            jerseyColor: "#5b8c5a"
-            pose: "warmup"
-            scaleFactor: 0.95
         }
 
         Column {
@@ -136,16 +218,10 @@ Item {
                 text: root.racing ? qsTr("Finish race") : qsTr("Start race")
                 onClicked: {
                     if (root.racing) {
-                        athleteA.pose = "finish"
-                        athleteB.fall(false)
-                        athleteC.fall(true)
-                        root.racing = false
+                        root.endRace()
                         return
                     }
-                    athleteA.pose = "run"
-                    athleteB.pose = "run"
-                    athleteC.pose = "run"
-                    root.racing = true
+                    root.startRace()
                 }
 
                 contentItem: Text {

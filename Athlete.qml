@@ -178,6 +178,41 @@ Item {
             }
         }
 
+        // Blood under detached head — same position space as head, counter-rotated flat
+        Item {
+            id: headBloodPuddle
+
+            visible: root.fallen && root.headDetached && headBloodBleed.amount > 0
+            x: head.x + (head.width - width) * 0.5
+            y: head.y + (head.height - height) * 0.5
+            width: root.u * 10
+            height: root.u * 3.6
+            rotation: root.fallen ? -fallTilt.angle : 0
+            scale: headBloodBleed.amount
+            z: 1
+
+            Repeater {
+                model: 4
+
+                Rectangle {
+                    required property int index
+
+                    readonly property real offset: index * 1.05
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                        horizontalCenterOffset: Math.cos(index * 1.7) * root.u * (0.4 + offset * 0.7)
+                        verticalCenter: parent.verticalCenter
+                        verticalCenterOffset: Math.sin(index * 1.3) * root.u * (0.12 + offset * 0.1)
+                    }
+                    width: root.u * (4.2 + index * 0.9)
+                    height: root.u * (1.5 + index * 0.2)
+                    radius: height / 2
+                    color: index < 2 ? "#e53935" : (index < 3 ? "#d32f2f" : "#b71c1c")
+                    opacity: 0.9 - index * 0.06
+                }
+            }
+        }
+
         // Head
         Item {
             id: head
@@ -305,6 +340,12 @@ Item {
 
     QtObject {
         id: bloodBleed
+
+        property real amount: 0
+    }
+
+    QtObject {
+        id: headBloodBleed
 
         property real amount: 0
     }
@@ -444,9 +485,12 @@ Item {
                 lean.angle = 0
                 stride.offset = 0
                 bloodBleed.amount = 0.12
+                headBloodBleed.amount = 0
                 const side = Math.random() < 0.5 ? 1 : -1
                 fallTilt.angle = 0
                 fallTwist.to = side * (root.pose === "dead" ? 92 : 68)
+                headRollX.to = side * root.u * 10
+                headRollRot.to = side * 420
                 bloodSpreadAnim.start()
             }
         }
@@ -474,11 +518,20 @@ Item {
         easing.type: Easing.OutCubic
     }
 
+    readonly property NumberAnimation headBloodSpreadAnim: NumberAnimation {
+        target: headBloodBleed
+        property: "amount"
+        to: 1
+        duration: 1600
+        easing.type: Easing.OutCubic
+    }
+
     readonly property ParallelAnimation headDetachAnim: ParallelAnimation {
         NumberAnimation {
+            id: headRollX
+
             target: headRoll
             property: "x"
-            to: root.u * 10
             duration: 700
             easing.type: Easing.OutCubic
         }
@@ -490,24 +543,33 @@ Item {
             easing.type: Easing.InQuad
         }
         NumberAnimation {
+            id: headRollRot
+
             target: headRoll
             property: "rotation"
-            to: 420
             duration: 700
+        }
+
+        onFinished: {
+            if (!root.fallen || !root.headDetached)
+                return
+            headBloodBleed.amount = 0.15
+            headBloodSpreadAnim.start()
         }
     }
 
     onPoseChanged: {
         if (!fallen) {
             fallTilt.angle = 0
-            headDetached = false
             headRoll.x = 0
             headRoll.y = 0
             headRoll.rotation = 0
             headRoll.gone = false
             headDetachAnim.stop()
             bloodSpreadAnim.stop()
+            headBloodSpreadAnim.stop()
             bloodBleed.amount = 0
+            headBloodBleed.amount = 0
         }
     }
 }
