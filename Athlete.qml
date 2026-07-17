@@ -11,6 +11,8 @@ Item {
     property string pose: "warmup"
     property bool headDetached: false
     property real scaleFactor: 1
+    property Item shadowsLayer: null
+    property int shadowDepth: 0
 
     readonly property real u: 4 * scaleFactor
     readonly property color outline: "#1a1a1a"
@@ -69,22 +71,105 @@ Item {
         bloodSpreadAnim.start()
     }
 
-    // Ground shadow — centered on body bottom when upright
-    Rectangle {
-        visible: !root.fallen
-        anchors {
-            horizontalCenter: parent.horizontalCenter
-            verticalCenter: parent.bottom
-            verticalCenterOffset: -root.u * 2.2
-        }
-        width: root.u * 10
-        height: root.u * 2.4
-        radius: height / 2
-        color: "#33000000"
-        scale: 1 - bob.offset / (root.u * 18)
+    function pinInLayer(item, localX, localY, layer) {
+        // Item local → figure local (includes item rotation/position; not figure transforms)
+        const inFigure = item.mapToItem(figure, localX, localY)
+
+        // Apply figure.transform manually: Rotation then Translate
+        const ox = figure.width * (root.fallen ? 0.5 : 0.42)
+        const oy = figure.height * (root.fallen ? 0.5 : 0.75)
+        const rad = ((root.fallen ? fallTilt.angle : lean.angle) * Math.PI) / 180
+        const cos = Math.cos(rad)
+        const sin = Math.sin(rad)
+        const dx = inFigure.x - ox
+        const dy = inFigure.y - oy
+        const rx = ox + dx * cos - dy * sin
+        const ry = oy + dx * sin + dy * cos
+        const tx = rx + (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
+        const ty = ry - bob.offset + (root.fallen ? fallSlide.y : 0)
+
+        return root.mapToItem(layer, figure.x + tx, figure.y + ty)
     }
 
-    // Fallen shadow + blood — same slide as figure, no rotation
+    function lowestInLayer(item, layer) {
+        // World-bottom of a vertical capsule (radius = width/2): max Y in layer space
+        const w = item.width
+        const h = item.height
+        const r = w * 0.5
+        const cx = w * 0.5
+        const cy = h * 0.5
+        const halfSeg = Math.max(0, h * 0.5 - r)
+
+        const c = root.pinInLayer(item, cx, cy, layer)
+        const px = root.pinInLayer(item, cx + 1, cy, layer)
+        const py = root.pinInLayer(item, cx, cy + 1, layer)
+        const gx = px.y - c.y
+        const gy = py.y - c.y
+        const glen = Math.hypot(gx, gy)
+        if (glen < 1e-6)
+            return root.pinInLayer(item, cx, h, layer)
+
+        const localX = r * gx / glen
+        const localY = (gy >= 0 ? halfSeg : -halfSeg) + r * gy / glen
+        return root.pinInLayer(item, cx + localX, cy + localY, layer)
+    }
+
+    // Shadows live on RaceScreen.athleteShadows; follow world-bottom of body/head
+    Rectangle {
+        id: bodyShadow
+
+        parent: root.shadowsLayer
+        visible: false
+        width: root.u * (root.fallen ? 14 : 10)
+        height: root.u * (root.fallen ? 3.2 : 2.4)
+        radius: height / 2
+        color: "#33000000"
+        z: root.shadowDepth
+    }
+
+    Rectangle {
+        id: headShadow
+
+        parent: root.shadowsLayer
+        visible: false
+        width: root.u * 5.5
+        height: root.u * 1.6
+        radius: height / 2
+        color: "#33000000"
+        z: root.shadowDepth
+    }
+
+    FrameAnimation {
+        running: root.visible && root.shadowsLayer !== null
+
+        onRunningChanged: {
+            if (running)
+                return
+            bodyShadow.visible = false
+            headShadow.visible = false
+        }
+
+        onTriggered: {
+            const layer = root.shadowsLayer
+            if (!layer)
+                return
+
+            const bodyPt = root.lowestInLayer(body, layer)
+            bodyShadow.x = bodyPt.x - bodyShadow.width * 0.5
+            bodyShadow.y = bodyPt.y - bodyShadow.height * 0.5
+            bodyShadow.visible = true
+
+            const showHead = root.headDetached && head.visible
+            if (showHead) {
+                const headPt = root.lowestInLayer(head, layer)
+                headShadow.x = headPt.x - headShadow.width * 0.5
+                headShadow.y = headPt.y - headShadow.height * 0.5
+            }
+            headShadow.visible = showHead
+        }
+    }
+
+    // Blood — same slide as figure, no rotation
     Item {
         id: groundFx
 
@@ -103,20 +188,6 @@ Item {
             y: fallSlide.y
         }
 
-        // Shadow under body bottom (slide only; not feet-after-tilt, not head)
-        Rectangle {
-            anchors {
-                horizontalCenter: parent.horizontalCenter
-                verticalCenter: parent.bottom
-            }
-            width: root.u * 14
-            height: root.u * 3.2
-            radius: height / 2
-            color: "#33000000"
-            scale: 1.05
-        }
-
-        // Blood from body center (body height 11u, bottom-aligned)
         Item {
             id: bloodPuddle
 
@@ -250,19 +321,6 @@ Item {
                     }
                 }
             }
-        }
-
-        // Detached head shadow — flat, centered on head bottom
-        Rectangle {
-            visible: root.fallen && root.headDetached && head.visible
-            x: head.x + (head.width - width) * 0.5
-            y: head.y + head.height - height * 0.5
-            width: root.u * 5.5
-            height: root.u * 1.6
-            radius: height / 2
-            color: "#33000000"
-            rotation: -fallTilt.angle
-            z: 1
         }
 
         // Blood under detached head — same position space as head, counter-rotated flat

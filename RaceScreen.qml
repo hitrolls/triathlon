@@ -170,6 +170,13 @@ Item {
                 color: "#1a1a1a"
             }
 
+            Item {
+                id: athleteShadows
+
+                anchors.fill: parent
+                z: 0
+            }
+
             Repeater {
                 model: root.athletesModel
 
@@ -189,7 +196,7 @@ Item {
                     height: athlete.height
                     x: (lane.width - width) / 2 + laneOffset
                     y: lane.yAtProgress(progress) - height
-                    z: Math.round((1 - progress) * 100)
+                    z: Math.round((1 - progress) * 100) + 1
 
                     Athlete {
                         id: athlete
@@ -200,6 +207,8 @@ Item {
                         scaleFactor: runner.scaleFactor
                         pose: runner.pose
                         headDetached: runner.headDetached
+                        shadowsLayer: athleteShadows
+                        shadowDepth: runner.z
                     }
                 }
             }
