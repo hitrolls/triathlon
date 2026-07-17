@@ -59,6 +59,8 @@ Item {
     readonly property real armBikeAngle: -28
     readonly property real armBikeReach: root.u * 2.8
     readonly property real bikeLeanAngle: 14
+    // Front-¾ view: rear left/right of body depending on facing
+    readonly property real bikeSide: root.facing >= 0 ? 1 : -1
     // Standing: body bottom (shadow) sits this far above item bottom
     readonly property real stanceLift: root.u * 2.2
     readonly property real figureOriginX: figure.width * (root.fallen ? 0.5 : 0.42)
@@ -348,74 +350,36 @@ Item {
             }
         ]
 
-        // Bike silhouette under the rider
+        // Bike — top-front ¾: rear high behind body, front low in front
         Item {
-            id: bike
+            id: rearWheel
 
             visible: root.biking && !root.fallen
             anchors {
                 horizontalCenter: parent.horizontalCenter
+                horizontalCenterOffset: -root.bikeSide * root.u * 1
                 bottom: parent.bottom
-                bottomMargin: -root.u * 0.4
+                bottomMargin: root.u * 0.5
             }
-            width: root.u * 11
-            height: root.u * 6
-            z: 0
+            width: root.u * 2.4
+            height: root.u * 4.96
+            z: -1
 
             Rectangle {
-                id: rearWheel
-
-                anchors {
-                    left: parent.left
-                    bottom: parent.bottom
-                }
-                width: root.u * 3.6
-                height: root.u * 3.6
+                anchors.centerIn: parent
+                width: parent.height
+                height: parent.height
                 radius: width / 2
                 color: "transparent"
                 border {
-                    width: Math.max(2, root.u * 0.55)
+                    width: Math.max(1, root.u * 0.45)
                     color: root.outline
                 }
-            }
-
-            Rectangle {
-                id: frontWheel
-
-                anchors {
-                    right: parent.right
-                    bottom: parent.bottom
+                transform: Scale {
+                    origin.x: rearWheel.height * 0.5
+                    origin.y: rearWheel.height * 0.5
+                    xScale: rearWheel.width / rearWheel.height
                 }
-                width: root.u * 3.6
-                height: root.u * 3.6
-                radius: width / 2
-                color: "transparent"
-                border {
-                    width: Math.max(2, root.u * 0.55)
-                    color: root.outline
-                }
-            }
-
-            Rectangle {
-                anchors {
-                    left: rearWheel.horizontalCenter
-                    right: frontWheel.horizontalCenter
-                    verticalCenter: rearWheel.verticalCenter
-                    verticalCenterOffset: -root.u * 1.4
-                }
-                height: Math.max(2, root.u * 0.55)
-                color: root.outline
-            }
-
-            Rectangle {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                    bottom: parent.bottom
-                    bottomMargin: root.u * 2.8
-                }
-                width: root.u * 2.2
-                height: Math.max(2, root.u * 0.55)
-                color: root.outline
             }
         }
 
@@ -498,6 +462,7 @@ Item {
             }
             width: root.u * 8.5
             height: root.u * 10
+            z: 1
 
             Rectangle {
                 anchors.fill: parent
@@ -544,6 +509,51 @@ Item {
                         pixelSize: Math.round(root.u * 2.8)
                         bold: true
                     }
+                }
+            }
+        }
+
+        Item {
+            id: frontWheel
+
+            visible: root.biking && !root.fallen
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                horizontalCenterOffset: root.bikeSide * root.u * 1.5
+                bottom: parent.bottom
+                bottomMargin: -root.u * 0.2
+            }
+            width: root.u * 3.0
+            height: root.u * 6.2
+            z: 3
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: parent.height
+                height: parent.height
+                radius: width / 2
+                color: "transparent"
+                border {
+                    width: Math.max(2, root.u * 0.55)
+                    color: root.outline
+                }
+                transform: Scale {
+                    origin.x: frontWheel.height * 0.5
+                    origin.y: frontWheel.height * 0.5
+                    xScale: frontWheel.width / frontWheel.height
+                }
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: root.u * 1.1
+                height: root.u * 1.1
+                radius: width / 2
+                color: root.outline
+                transform: Scale {
+                    origin.x: root.u * 0.55
+                    origin.y: root.u * 0.55
+                    xScale: frontWheel.width / frontWheel.height
                 }
             }
         }
