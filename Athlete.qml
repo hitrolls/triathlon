@@ -29,6 +29,11 @@ Item {
     readonly property real runBeat: 105 + Math.random() * 75
     readonly property real finishPhase: Math.random() * 600
     readonly property real finishBeat: 200 + Math.random() * 140
+    readonly property real figureOriginX: figure.width * (root.fallen ? 0.5 : 0.42)
+    readonly property real figureOriginY: figure.height * (root.fallen ? 0.5 : 0.75)
+    readonly property real figureAngle: root.fallen ? fallTilt.angle : lean.angle
+    readonly property real figureShiftX: (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
+    readonly property real figureShiftY: -bob.offset + (root.fallen ? fallSlide.y : 0)
 
     width: 18 * u
     height: 22 * u
@@ -38,12 +43,13 @@ Item {
         pose = dead ? "dead" : "injured"
     }
 
-    function prepFall() {
+    function resetLocomotionState() {
         bob.offset = 0
         lean.angle = 0
         stride.offset = 0
-        bloodBleed.amount = 0.1
-        headBloodBleed.amount = 0
+    }
+
+    function resetFallState() {
         fallTilt.angle = 0
         fallSlide.x = 0
         fallSlide.y = 0
@@ -51,6 +57,21 @@ Item {
         headRoll.y = 0
         headRoll.rotation = 0
         headRoll.gone = false
+        bloodBleed.amount = 0
+        headBloodBleed.amount = 0
+    }
+
+    function stopFallAnimations() {
+        fallAnim.stop()
+        headDetachAnim.stop()
+        bloodSpreadAnim.stop()
+        headBloodSpreadAnim.stop()
+    }
+
+    function prepFall() {
+        resetLocomotionState()
+        resetFallState()
+        bloodBleed.amount = 0.1
 
         const dead = root.pose === "dead"
         // Forward = up the track (−Y); yaw fans left/right around that axis
@@ -76,17 +97,17 @@ Item {
         const inFigure = item.mapToItem(figure, localX, localY)
 
         // Apply figure.transform manually: Rotation then Translate
-        const ox = figure.width * (root.fallen ? 0.5 : 0.42)
-        const oy = figure.height * (root.fallen ? 0.5 : 0.75)
-        const rad = ((root.fallen ? fallTilt.angle : lean.angle) * Math.PI) / 180
+        const ox = root.figureOriginX
+        const oy = root.figureOriginY
+        const rad = (root.figureAngle * Math.PI) / 180
         const cos = Math.cos(rad)
         const sin = Math.sin(rad)
         const dx = inFigure.x - ox
         const dy = inFigure.y - oy
         const rx = ox + dx * cos - dy * sin
         const ry = oy + dx * sin + dy * cos
-        const tx = rx + (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
-        const ty = ry - bob.offset + (root.fallen ? fallSlide.y : 0)
+        const tx = rx + root.figureShiftX
+        const ty = ry + root.figureShiftY
 
         return root.mapToItem(layer, figure.x + tx, figure.y + ty)
     }
@@ -237,13 +258,13 @@ Item {
 
         transform: [
             Rotation {
-                origin.x: figure.width * (root.fallen ? 0.5 : 0.42)
-                origin.y: figure.height * (root.fallen ? 0.5 : 0.75)
-                angle: root.fallen ? fallTilt.angle : lean.angle
+                origin.x: root.figureOriginX
+                origin.y: root.figureOriginY
+                angle: root.figureAngle
             },
             Translate {
-                y: -bob.offset + (root.fallen ? fallSlide.y : 0)
-                x: (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
+                y: root.figureShiftY
+                x: root.figureShiftX
             }
         ]
 
@@ -450,40 +471,28 @@ Item {
 
     }
 
-    QtObject {
-        id: bob
-
+    readonly property QtObject bob: QtObject {
         property real offset: 0
     }
 
-    QtObject {
-        id: lean
-
+    readonly property QtObject lean: QtObject {
         property real angle: 0
     }
 
-    QtObject {
-        id: stride
-
+    readonly property QtObject stride: QtObject {
         property real offset: 0
     }
 
-    QtObject {
-        id: fallTilt
-
+    readonly property QtObject fallTilt: QtObject {
         property real angle: 0
     }
 
-    QtObject {
-        id: fallSlide
-
+    readonly property QtObject fallSlide: QtObject {
         property real x: 0
         property real y: 0
     }
 
-    QtObject {
-        id: fallTargets
-
+    readonly property QtObject fallTargets: QtObject {
         property real tilt: 0
         property real airX: 0
         property real airY: 0
@@ -495,24 +504,18 @@ Item {
         property real headRot: 0
     }
 
-    QtObject {
-        id: headRoll
-
+    readonly property QtObject headRoll: QtObject {
         property real x: 0
         property real y: 0
         property real rotation: 0
         property bool gone: false
     }
 
-    QtObject {
-        id: bloodBleed
-
+    readonly property QtObject bloodBleed: QtObject {
         property real amount: 0
     }
 
-    QtObject {
-        id: headBloodBleed
-
+    readonly property QtObject headBloodBleed: QtObject {
         property real amount: 0
     }
 
@@ -768,23 +771,13 @@ Item {
     }
 
     onPoseChanged: {
-        if (pose === "injured" || pose === "dead") {
+        if (root.pose === "injured" || root.pose === "dead") {
             prepFall()
             Qt.callLater(() => fallAnim.restart())
-        } else {
-            fallAnim.stop()
-            headDetachAnim.stop()
-            bloodSpreadAnim.stop()
-            headBloodSpreadAnim.stop()
-            fallTilt.angle = 0
-            fallSlide.x = 0
-            fallSlide.y = 0
-            headRoll.x = 0
-            headRoll.y = 0
-            headRoll.rotation = 0
-            headRoll.gone = false
-            bloodBleed.amount = 0
-            headBloodBleed.amount = 0
+            return
         }
+
+        stopFallAnimations()
+        resetFallState()
     }
 }
