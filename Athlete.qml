@@ -20,6 +20,14 @@ Item {
     readonly property bool celebrating: pose === "finish"
     readonly property bool running: pose === "run"
 
+    // Per-athlete timing so pose loops are not synchronized
+    readonly property real warmupPhase: Math.random() * 700
+    readonly property real warmupBeat: 170 + Math.random() * 110
+    readonly property real runPhase: Math.random() * 500
+    readonly property real runBeat: 105 + Math.random() * 75
+    readonly property real finishPhase: Math.random() * 600
+    readonly property real finishBeat: 200 + Math.random() * 140
+
     width: 18 * u
     height: 22 * u
 
@@ -61,13 +69,13 @@ Item {
         bloodSpreadAnim.start()
     }
 
-    // Ground shadow — under feet when upright
+    // Ground shadow — centered on body bottom when upright
     Rectangle {
         visible: !root.fallen
         anchors {
             horizontalCenter: parent.horizontalCenter
-            bottom: parent.bottom
-            bottomMargin: root.u * 0.4
+            verticalCenter: parent.bottom
+            verticalCenterOffset: -root.u * 2.2
         }
         width: root.u * 10
         height: root.u * 2.4
@@ -95,12 +103,11 @@ Item {
             y: fallSlide.y
         }
 
-        // Shadow at body bottom
+        // Shadow under body bottom (slide only; not feet-after-tilt, not head)
         Rectangle {
             anchors {
                 horizontalCenter: parent.horizontalCenter
-                bottom: parent.bottom
-                bottomMargin: -height * 0.35
+                verticalCenter: parent.bottom
             }
             width: root.u * 14
             height: root.u * 3.2
@@ -243,6 +250,19 @@ Item {
                     }
                 }
             }
+        }
+
+        // Detached head shadow — flat, centered on head bottom
+        Rectangle {
+            visible: root.fallen && root.headDetached && head.visible
+            x: head.x + (head.width - width) * 0.5
+            y: head.y + head.height - height * 0.5
+            width: root.u * 5.5
+            height: root.u * 1.6
+            radius: height / 2
+            color: "#33000000"
+            rotation: -fallTilt.angle
+            z: 1
         }
 
         // Blood under detached head — same position space as head, counter-rotated flat
@@ -439,128 +459,146 @@ Item {
     }
 
     readonly property SequentialAnimation warmupAnim: SequentialAnimation {
-        loops: Animation.Infinite
         running: root.visible && root.pose === "warmup"
 
-        ParallelAnimation {
-            NumberAnimation {
-                target: bob
-                property: "offset"
-                to: root.u * 1.2
-                duration: 220
-                easing.type: Easing.OutQuad
-            }
-            NumberAnimation {
-                target: lean
-                property: "angle"
-                to: -8
-                duration: 220
-            }
+        PauseAnimation {
+            duration: root.warmupPhase
         }
-        ParallelAnimation {
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: root.u * 1.2
+                    duration: root.warmupBeat
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: -8
+                    duration: root.warmupBeat
+                }
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: 0
+                    duration: root.warmupBeat
+                    easing.type: Easing.InQuad
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: 8
+                    duration: root.warmupBeat
+                }
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: root.u * 1.2
+                    duration: root.warmupBeat
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: 0
+                    duration: root.warmupBeat
+                }
+            }
             NumberAnimation {
                 target: bob
                 property: "offset"
                 to: 0
-                duration: 220
+                duration: root.warmupBeat
                 easing.type: Easing.InQuad
             }
-            NumberAnimation {
-                target: lean
-                property: "angle"
-                to: 8
-                duration: 220
-            }
-        }
-        ParallelAnimation {
-            NumberAnimation {
-                target: bob
-                property: "offset"
-                to: root.u * 1.2
-                duration: 220
-                easing.type: Easing.OutQuad
-            }
-            NumberAnimation {
-                target: lean
-                property: "angle"
-                to: 0
-                duration: 220
-            }
-        }
-        NumberAnimation {
-            target: bob
-            property: "offset"
-            to: 0
-            duration: 220
-            easing.type: Easing.InQuad
         }
     }
 
     readonly property SequentialAnimation runAnim: SequentialAnimation {
-        loops: Animation.Infinite
         running: root.visible && root.pose === "run"
 
-        ParallelAnimation {
-            NumberAnimation {
-                target: bob
-                property: "offset"
-                to: root.u * 1.6
-                duration: 140
-                easing.type: Easing.OutQuad
-            }
-            NumberAnimation {
-                target: stride
-                property: "offset"
-                to: root.u * 0.8
-                duration: 140
-            }
-            NumberAnimation {
-                target: lean
-                property: "angle"
-                to: 6
-                duration: 140
-            }
+        PauseAnimation {
+            duration: root.runPhase
         }
-        ParallelAnimation {
-            NumberAnimation {
-                target: bob
-                property: "offset"
-                to: 0
-                duration: 140
-                easing.type: Easing.InQuad
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: root.u * 1.6
+                    duration: root.runBeat
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: stride
+                    property: "offset"
+                    to: root.u * 0.8
+                    duration: root.runBeat
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: 6
+                    duration: root.runBeat
+                }
             }
-            NumberAnimation {
-                target: stride
-                property: "offset"
-                to: -root.u * 0.8
-                duration: 140
-            }
-            NumberAnimation {
-                target: lean
-                property: "angle"
-                to: -4
-                duration: 140
+            ParallelAnimation {
+                NumberAnimation {
+                    target: bob
+                    property: "offset"
+                    to: 0
+                    duration: root.runBeat
+                    easing.type: Easing.InQuad
+                }
+                NumberAnimation {
+                    target: stride
+                    property: "offset"
+                    to: -root.u * 0.8
+                    duration: root.runBeat
+                }
+                NumberAnimation {
+                    target: lean
+                    property: "angle"
+                    to: -4
+                    duration: root.runBeat
+                }
             }
         }
     }
 
     readonly property SequentialAnimation finishAnim: SequentialAnimation {
-        loops: Animation.Infinite
         running: root.visible && root.pose === "finish"
 
-        NumberAnimation {
-            target: bob
-            property: "offset"
-            to: root.u * 3.2
-            duration: 260
-            easing.type: Easing.OutQuad
+        PauseAnimation {
+            duration: root.finishPhase
         }
-        NumberAnimation {
-            target: bob
-            property: "offset"
-            to: 0
-            duration: 260
-            easing.type: Easing.InQuad
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bob
+                property: "offset"
+                to: root.u * 3.2
+                duration: root.finishBeat
+                easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
+                target: bob
+                property: "offset"
+                to: 0
+                duration: root.finishBeat
+                easing.type: Easing.InQuad
+            }
         }
     }
 

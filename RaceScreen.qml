@@ -115,7 +115,7 @@ Item {
             anchors {
                 horizontalCenter: parent.horizontalCenter
                 top: parent.top
-                topMargin: 48
+                topMargin: 80
                 bottom: parent.bottom
                 bottomMargin: 120
             }
