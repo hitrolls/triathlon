@@ -16,6 +16,9 @@ Item {
     property int shadowDepth: 0
     // -1 = back to camera (running up), +1 = face to camera (running down)
     property real facing: -1
+    // Set when collapsing from swim — float-up death instead of land tumble
+    property bool waterFall: false
+    property string previousPose: "warmup"
 
     Behavior on facing {
         NumberAnimation {
@@ -100,10 +103,17 @@ Item {
         headRoll.gone = false
         bloodBleed.amount = 0
         headBloodBleed.amount = 0
+        bloodDrift.x = 0
+        bloodDrift.y = 0
+        bloodDrift.swell = 0
+        bloodDrift.phase = 0
+        bloodDrift.angle = 0
     }
 
     function stopFallAnimations() {
         fallAnim.stop()
+        waterDeathAnim.stop()
+        waterBloodDriftAnim.stop()
         headDetachAnim.stop()
         bloodSpreadAnim.stop()
         headBloodSpreadAnim.stop()
@@ -112,8 +122,26 @@ Item {
     function prepFall() {
         resetLocomotionState()
         resetFallState()
-        bloodBleed.amount = 0.1
 
+        if (root.waterFall) {
+            root.headDetached = false
+            const side = Math.random() < 0.5 ? 1 : -1
+            const rise = root.u * (7 + Math.random() * 4)
+            fallTargets.tilt = side * (85 + Math.random() * 40)
+            fallTargets.airX = side * root.u * (1.5 + Math.random() * 2.5)
+            fallTargets.airY = -rise * 0.65
+            fallTargets.landX = fallTargets.airX + (Math.random() - 0.5) * root.u * 2.5
+            fallTargets.landY = -rise
+            fallTargets.airMs = 520 + Math.random() * 220
+            fallTargets.landMs = 680 + Math.random() * 280
+            bloodBleed.amount = 0.08
+            bloodDrift.phase = Math.random() * Math.PI * 2
+            bloodSpreadAnim.start()
+            waterBloodDriftAnim.restart()
+            return
+        }
+
+        bloodBleed.amount = 0.1
         const dead = root.pose === "dead"
         // Fall along facing: −1 = up the track (−Y), +1 = down (+Y)
         const forward = root.facing >= 0 ? 1 : -1
@@ -209,30 +237,42 @@ Item {
 
         parent: root.bloodLayer
         visible: false
-        width: root.u * 20
-        height: root.u * 5
-        scale: bloodBleed.amount
+        width: root.u * (root.waterFall ? 28 : 20)
+        height: root.u * (root.waterFall ? 28 : 5)
+        scale: bloodBleed.amount * (1 + bloodDrift.swell)
+        rotation: root.waterFall ? bloodDrift.angle : 0
         transformOrigin: Item.Center
         z: root.shadowDepth
 
         Repeater {
-            model: 5
+            model: root.waterFall ? 7 : 5
 
             Rectangle {
                 required property int index
 
                 readonly property real offset: index * 1.05
+                readonly property real waterR: root.u * (5.5 + index * 1.8)
+                readonly property real drift: root.waterFall
+                    ? root.u * (0.35 + index * 0.08) : 0
                 anchors {
                     horizontalCenter: parent.horizontalCenter
-                    horizontalCenterOffset: Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
+                    horizontalCenterOffset: root.waterFall
+                        ? Math.cos(index * 1.35 + 0.4) * root.u * (0.3 + offset * 0.55)
+                          + Math.cos(bloodDrift.phase + index * 1.15) * drift
+                        : Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
                     verticalCenter: parent.verticalCenter
-                    verticalCenterOffset: Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
+                    verticalCenterOffset: root.waterFall
+                        ? Math.sin(index * 1.35 + 0.4) * root.u * (0.3 + offset * 0.55)
+                          + Math.sin(bloodDrift.phase * 0.85 + index * 0.9) * drift * 0.85
+                        : Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
                 }
-                width: root.u * (6.5 + index * 1.2)
-                height: root.u * (2.0 + index * 0.25)
+                width: root.waterFall ? waterR : root.u * (6.5 + index * 1.2)
+                height: root.waterFall ? waterR : root.u * (2.0 + index * 0.25)
                 radius: height / 2
                 color: index < 2 ? "#e53935" : (index < 4 ? "#d32f2f" : "#b71c1c")
-                opacity: 0.92 - index * 0.05
+                opacity: root.waterFall
+                    ? (0.55 - index * 0.055)
+                    : (0.92 - index * 0.05)
             }
         }
     }
@@ -312,16 +352,23 @@ Item {
 
             const showBodyBlood = root.fallen && bloodBleed.amount > 0
             if (showBodyBlood) {
-                // Flat puddle: same slide as figure, no rotation (impact point under torso)
-                const puddlePt = root.mapToItem(blood,
-                                                root.width * 0.5 + fallSlide.x,
-                                                root.height - root.u * 7.7 + fallSlide.y)
-                bodyBlood.x = puddlePt.x - bodyBlood.width * 0.5
-                bodyBlood.y = puddlePt.y - bodyBlood.height * 0.5
+                if (root.waterFall) {
+                    const bodyPt = root.pinInLayer(body, body.width * 0.5, body.height * 0.45, blood, false)
+                    bodyBlood.x = bodyPt.x - bodyBlood.width * 0.5 + bloodDrift.x
+                    bodyBlood.y = bodyPt.y - bodyBlood.height * 0.5 + bloodDrift.y
+                } else {
+                    // Flat puddle: same slide as figure, no rotation (impact point under torso)
+                    const puddlePt = root.mapToItem(blood,
+                                                    root.width * 0.5 + fallSlide.x,
+                                                    root.height - root.u * 7.7 + fallSlide.y)
+                    bodyBlood.x = puddlePt.x - bodyBlood.width * 0.5
+                    bodyBlood.y = puddlePt.y - bodyBlood.height * 0.5
+                }
             }
             bodyBlood.visible = showBodyBlood
 
-            const showHeadBlood = root.fallen && root.headDetached && head.visible && headBloodBleed.amount > 0
+            const showHeadBlood = root.fallen && !root.waterFall && root.headDetached
+                                  && head.visible && headBloodBleed.amount > 0
             if (showHeadBlood) {
                 const headPt = root.pinInLayer(head, head.width * 0.5, head.height * 0.5, blood, true)
                 headBlood.x = headPt.x - headBlood.width * 0.5
@@ -337,8 +384,9 @@ Item {
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
-            // Swim: drop figure so head sits near path (waterline); body hangs below / hidden
-            bottomMargin: (root.swimming && !root.fallen) ? -(root.u * 7.5) : root.u * 2.2
+            // Swim / water death: keep figure low so body rises from under the waterline
+            bottomMargin: ((root.swimming && !root.fallen) || root.waterFall)
+                          ? -(root.u * 7.5) : root.u * 2.2
         }
         width: root.u * 12
         height: root.u * 16
@@ -755,6 +803,14 @@ Item {
         property real amount: 0
     }
 
+    readonly property QtObject bloodDrift: QtObject {
+        property real x: 0
+        property real y: 0
+        property real swell: 0
+        property real phase: 0
+        property real angle: 0
+    }
+
     readonly property SequentialAnimation warmupAnim: SequentialAnimation {
         running: root.visible && root.pose === "warmup"
 
@@ -1066,8 +1122,106 @@ Item {
         target: bloodBleed
         property: "amount"
         to: 1
-        duration: 700
+        duration: root.waterFall ? 1600 : 700
         easing.type: Easing.OutCubic
+    }
+
+    readonly property ParallelAnimation waterBloodDriftAnim: ParallelAnimation {
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bloodDrift
+                property: "x"
+                to: root.u * 1.4
+                duration: 2400
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bloodDrift
+                property: "x"
+                to: -root.u * 1.2
+                duration: 3000
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bloodDrift
+                property: "x"
+                to: root.u * 0.3
+                duration: 2200
+                easing.type: Easing.InOutSine
+            }
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bloodDrift
+                property: "y"
+                to: -root.u * 0.85
+                duration: 2800
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bloodDrift
+                property: "y"
+                to: root.u * 1.0
+                duration: 2600
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bloodDrift
+                property: "y"
+                to: -root.u * 0.2
+                duration: 2400
+                easing.type: Easing.InOutSine
+            }
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bloodDrift
+                property: "swell"
+                to: 0.07
+                duration: 2000
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bloodDrift
+                property: "swell"
+                to: -0.05
+                duration: 2200
+                easing.type: Easing.InOutSine
+            }
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bloodDrift
+                property: "angle"
+                to: 8
+                duration: 3200
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bloodDrift
+                property: "angle"
+                to: -6
+                duration: 3400
+                easing.type: Easing.InOutSine
+            }
+        }
+        NumberAnimation {
+            loops: Animation.Infinite
+            target: bloodDrift
+            property: "phase"
+            from: 0
+            to: Math.PI * 2
+            duration: 4800
+            easing.type: Easing.Linear
+        }
     }
 
     readonly property NumberAnimation headBloodSpreadAnim: NumberAnimation {
@@ -1076,6 +1230,61 @@ Item {
         to: 1
         duration: 500
         easing.type: Easing.OutCubic
+    }
+
+    readonly property SequentialAnimation waterDeathAnim: SequentialAnimation {
+        ParallelAnimation {
+            NumberAnimation {
+                target: fallTilt
+                property: "angle"
+                from: 0
+                to: fallTargets.tilt * 0.55
+                duration: fallTargets.airMs
+                easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "x"
+                from: 0
+                to: fallTargets.airX
+                duration: fallTargets.airMs
+                easing.type: Easing.OutSine
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "y"
+                from: 0
+                to: fallTargets.airY
+                duration: fallTargets.airMs
+                easing.type: Easing.OutCubic
+            }
+        }
+        ParallelAnimation {
+            NumberAnimation {
+                target: fallTilt
+                property: "angle"
+                to: fallTargets.tilt
+                duration: fallTargets.landMs
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "x"
+                to: fallTargets.landX
+                duration: fallTargets.landMs
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: fallSlide
+                property: "y"
+                to: fallTargets.landY
+                duration: fallTargets.landMs
+                easing.type: Easing.OutSine
+            }
+        }
+        ScriptAction {
+            script: root.fallSettled()
+        }
     }
 
     readonly property ParallelAnimation headDetachAnim: ParallelAnimation {
@@ -1113,12 +1322,21 @@ Item {
 
     onPoseChanged: {
         if (root.pose === "injured" || root.pose === "dead") {
+            root.waterFall = root.previousPose === "swim"
             prepFall()
-            Qt.callLater(() => fallAnim.restart())
+            Qt.callLater(() => {
+                if (root.waterFall)
+                    waterDeathAnim.restart()
+                else
+                    fallAnim.restart()
+            })
+            root.previousPose = root.pose
             return
         }
 
+        root.waterFall = false
         stopFallAnimations()
         resetFallState()
+        root.previousPose = root.pose
     }
 }

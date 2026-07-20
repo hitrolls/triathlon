@@ -111,13 +111,14 @@ Item {
                 continue
             }
 
-            // Casualties on run and bike (swim/transitions later)
+            // Casualties on run, bike, and in-water swim
             const discipline = course.disciplineAt(progress)
-            if ((discipline === "run" || discipline === "bike")
+            const inWater = discipline === "swim" && root.poseForProgress(progress) === "swim"
+            if ((discipline === "run" || discipline === "bike" || inWater)
                     && progress < 0.98 && Math.random() < 0.35 * dt) {
-                const dead = Math.random() < 0.45
+                const dead = inWater || Math.random() < 0.45
                 athletesModel.setProperty(i, "progress", progress)
-                athletesModel.setProperty(i, "headDetached", dead && Math.random() < 0.45)
+                athletesModel.setProperty(i, "headDetached", !inWater && dead && Math.random() < 0.45)
                 athletesModel.setProperty(i, "pose", dead ? "dead" : "injured")
                 --active
                 continue
@@ -550,7 +551,8 @@ Item {
                     x: trackPoint.x + trackPoint.nx * laneOffset - width * 0.5
                     // trackPoint.y is the shadow/stance point (not item bottom)
                     y: trackPoint.y + trackPoint.ny * laneOffset - height
-                       + ((pose === "swim" && !athlete.fallen) ? 0 : athlete.stanceLift)
+                       + (((pose === "swim" && !athlete.fallen) || athlete.waterFall)
+                          ? 0 : athlete.stanceLift)
                     z: Math.max(1, Math.round(y + height + athlete.depthBias))
 
                     onYChanged: {
