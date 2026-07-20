@@ -238,11 +238,17 @@ Item {
         parent: root.bloodLayer
         visible: false
         width: root.u * (root.waterFall ? 28 : 20)
-        height: root.u * (root.waterFall ? 28 : 5)
-        scale: bloodBleed.amount * (1 + bloodDrift.swell)
+        height: root.u * (root.waterFall ? 28 : 20)
         rotation: root.waterFall ? bloodDrift.angle : 0
         transformOrigin: Item.Center
         z: root.shadowDepth
+        transform: Scale {
+            origin.x: bodyBlood.width * 0.5
+            origin.y: bodyBlood.height * 0.5
+            xScale: bloodBleed.amount * (1 + bloodDrift.swell)
+            yScale: bloodBleed.amount * (1 + bloodDrift.swell)
+                    * (root.waterFall ? 0.62 : 0.35)
+        }
 
         Repeater {
             model: root.waterFall ? 7 : 5
@@ -251,7 +257,9 @@ Item {
                 required property int index
 
                 readonly property real offset: index * 1.05
-                readonly property real waterR: root.u * (5.5 + index * 1.8)
+                readonly property real blobR: root.waterFall
+                    ? root.u * (5.5 + index * 1.8)
+                    : root.u * (5.0 + index * 1.4)
                 readonly property real drift: root.waterFall
                     ? root.u * (0.35 + index * 0.08) : 0
                 anchors {
@@ -259,16 +267,16 @@ Item {
                     horizontalCenterOffset: root.waterFall
                         ? Math.cos(index * 1.35 + 0.4) * root.u * (0.3 + offset * 0.55)
                           + Math.cos(bloodDrift.phase + index * 1.15) * drift
-                        : Math.cos(index * 1.5) * root.u * (0.6 + offset * 0.9)
+                        : Math.cos(index * 1.5) * root.u * (0.5 + offset * 0.75)
                     verticalCenter: parent.verticalCenter
                     verticalCenterOffset: root.waterFall
                         ? Math.sin(index * 1.35 + 0.4) * root.u * (0.3 + offset * 0.55)
                           + Math.sin(bloodDrift.phase * 0.85 + index * 0.9) * drift * 0.85
-                        : Math.sin(index * 1.1) * root.u * (0.15 + offset * 0.12)
+                        : Math.sin(index * 1.1) * root.u * (0.4 + offset * 0.55)
                 }
-                width: root.waterFall ? waterR : root.u * (6.5 + index * 1.2)
-                height: root.waterFall ? waterR : root.u * (2.0 + index * 0.25)
-                radius: height / 2
+                width: blobR
+                height: blobR
+                radius: blobR / 2
                 color: index < 2 ? "#e53935" : (index < 4 ? "#d32f2f" : "#b71c1c")
                 opacity: root.waterFall
                     ? (0.55 - index * 0.055)
@@ -282,11 +290,16 @@ Item {
 
         parent: root.bloodLayer
         visible: false
-        width: root.u * 10
-        height: root.u * 3.6
-        scale: headBloodBleed.amount
+        width: root.u * 12
+        height: root.u * 12
         transformOrigin: Item.Center
         z: root.shadowDepth
+        transform: Scale {
+            origin.x: headBlood.width * 0.5
+            origin.y: headBlood.height * 0.5
+            xScale: headBloodBleed.amount
+            yScale: headBloodBleed.amount * 0.35
+        }
 
         Repeater {
             model: 4
@@ -295,15 +308,16 @@ Item {
                 required property int index
 
                 readonly property real offset: index * 1.05
+                readonly property real blobR: root.u * (3.6 + index * 1.0)
                 anchors {
                     horizontalCenter: parent.horizontalCenter
-                    horizontalCenterOffset: Math.cos(index * 1.7) * root.u * (0.4 + offset * 0.7)
+                    horizontalCenterOffset: Math.cos(index * 1.7) * root.u * (0.35 + offset * 0.6)
                     verticalCenter: parent.verticalCenter
-                    verticalCenterOffset: Math.sin(index * 1.3) * root.u * (0.12 + offset * 0.1)
+                    verticalCenterOffset: Math.sin(index * 1.3) * root.u * (0.3 + offset * 0.45)
                 }
-                width: root.u * (4.2 + index * 0.9)
-                height: root.u * (1.5 + index * 0.2)
-                radius: height / 2
+                width: blobR
+                height: blobR
+                radius: blobR / 2
                 color: index < 2 ? "#e53935" : (index < 3 ? "#d32f2f" : "#b71c1c")
                 opacity: 0.9 - index * 0.06
             }
