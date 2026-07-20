@@ -68,11 +68,16 @@ Item {
     readonly property real stanceLift: root.u * 2.2
     readonly property real figureOriginX: figure.width * (root.fallen ? 0.5 : 0.42)
     readonly property real figureOriginY: figure.height * (root.fallen ? 0.5 : 0.75)
-    readonly property real figureAngle: root.fallen ? fallTilt.angle
+    readonly property real figureAngle: root.fallen
+                                     ? fallTilt.angle + (root.waterFall ? bodyDrift.angle : 0)
                                      : root.biking ? root.bikeLeanAngle * (root.facing >= 0 ? 1 : -1) + lean.angle
                                      : lean.angle
-    readonly property real figureShiftX: (root.running ? stride.offset : 0) + (root.fallen ? fallSlide.x : 0)
-    readonly property real figureShiftY: -bob.offset + (root.fallen ? fallSlide.y : 0)
+    readonly property real figureShiftX: (root.running ? stride.offset : 0)
+                                         + (root.fallen ? fallSlide.x : 0)
+                                         + (root.waterFall ? bodyDrift.x : 0)
+    readonly property real figureShiftY: -bob.offset
+                                         + (root.fallen ? fallSlide.y : 0)
+                                         + (root.waterFall ? bodyDrift.y : 0)
 
     signal fallSettled()
 
@@ -108,6 +113,9 @@ Item {
         bloodDrift.swell = 0
         bloodDrift.phase = 0
         bloodDrift.angle = 0
+        bodyDrift.x = 0
+        bodyDrift.y = 0
+        bodyDrift.angle = 0
     }
 
     function stopFallAnimations() {
@@ -825,6 +833,12 @@ Item {
         property real angle: 0
     }
 
+    readonly property QtObject bodyDrift: QtObject {
+        property real x: 0
+        property real y: 0
+        property real angle: 0
+    }
+
     readonly property SequentialAnimation warmupAnim: SequentialAnimation {
         running: root.visible && root.pose === "warmup"
 
@@ -1235,6 +1249,74 @@ Item {
             to: Math.PI * 2
             duration: 4800
             easing.type: Easing.Linear
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bodyDrift
+                property: "x"
+                to: root.u * 0.9
+                duration: 3100
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bodyDrift
+                property: "x"
+                to: -root.u * 0.75
+                duration: 3600
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bodyDrift
+                property: "x"
+                to: root.u * 0.2
+                duration: 2800
+                easing.type: Easing.InOutSine
+            }
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bodyDrift
+                property: "y"
+                to: -root.u * 0.55
+                duration: 3400
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bodyDrift
+                property: "y"
+                to: root.u * 0.65
+                duration: 3200
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bodyDrift
+                property: "y"
+                to: -root.u * 0.15
+                duration: 3000
+                easing.type: Easing.InOutSine
+            }
+        }
+        SequentialAnimation {
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: bodyDrift
+                property: "angle"
+                to: 4
+                duration: 3800
+                easing.type: Easing.InOutSine
+            }
+            NumberAnimation {
+                target: bodyDrift
+                property: "angle"
+                to: -3.5
+                duration: 4000
+                easing.type: Easing.InOutSine
+            }
         }
     }
 
