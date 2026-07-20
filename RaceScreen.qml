@@ -111,10 +111,12 @@ Item {
                 continue
             }
 
-            // Casualties on run, bike, and in-water swim
-            const discipline = course.disciplineAt(progress)
-            const inWater = discipline === "swim" && root.poseForProgress(progress) === "swim"
-            if ((discipline === "run" || discipline === "bike" || inWater)
+            // Casualties only on-track (not shore/mount/transition approaches)
+            const trackPose = root.poseForProgress(progress)
+            const inWater = trackPose === "swim"
+            const onBike = trackPose === "bike"
+            const onRun = course.disciplineAt(progress) === "run"
+            if ((onRun || onBike || inWater)
                     && progress < 0.98 && Math.random() < 0.35 * dt) {
                 const dead = inWater || Math.random() < 0.45
                 athletesModel.setProperty(i, "progress", progress)
