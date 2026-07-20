@@ -397,7 +397,7 @@ Item {
                                       : root.biking ? 0.68
                                       : 0.88)
             y: body.y + body.height * (root.swimming ? 0.05
-                                          : root.biking ? 0.18
+                                          : root.biking ? 0.28
                                           : 0.22)
                  + (root.running ? runHand.lift : 0)
                  + (root.swimming ? -root.u * 0.4 : 0)
@@ -435,7 +435,7 @@ Item {
                                       : root.biking ? 0.32
                                       : 0.12)
             y: body.y + body.height * (root.swimming ? 0.05
-                                          : root.biking ? 0.18
+                                          : root.biking ? 0.28
                                           : 0.22)
                  - (root.running ? runHand.lift : 0)
                  + (root.swimming ? -root.u * 0.4 : 0)
@@ -473,8 +473,8 @@ Item {
                 bottom: parent.bottom
                 bottomMargin: (root.biking && !root.fallen) ? root.u * 2.8 : 0
             }
-            width: root.u * ((root.biking && !root.fallen) ? 8.9 : 8.5)
-            height: root.u * ((root.biking && !root.fallen) ? 7.8 : 10)
+            width: root.u * ((root.biking && !root.fallen) ? 8.5 : 8.5)
+            height: root.u * ((root.biking && !root.fallen) ? 10.0 : 10)
             z: 1
 
             Rectangle {
@@ -577,7 +577,7 @@ Item {
 
             x: body.x + body.width * ((root.biking && !root.fallen) ? 0.20 : 0.18)
                  + (root.headDetached ? headRoll.x : 0)
-            y: body.y - height * ((root.biking && !root.fallen) ? 0.48 : 0.72)
+            y: body.y - height * ((root.biking && !root.fallen) ? 0.20 : 0.72)
                  + (root.headDetached ? headRoll.y : 0)
             width: root.u * 5.6
             height: root.u * 5.6
